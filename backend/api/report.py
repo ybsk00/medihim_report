@@ -39,9 +39,43 @@ async def get_report(report_id: str):
 
 @router.put("/{report_id}/approve")
 async def approve_report(report_id: str):
+    """리포트 승인 (이메일 발송 없이 승인만)"""
     db = get_supabase()
 
-    # 리포트 조회
+    report = (
+        db.table("reports")
+        .select("id, status, consultation_id, access_token")
+        .eq("id", report_id)
+        .single()
+        .execute()
+    )
+
+    if not report.data:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    if report.data["status"] not in ("draft", "rejected"):
+        raise HTTPException(status_code=400, detail="이 상태에서는 승인할 수 없습니다")
+
+    db.table("reports").update({
+        "status": "approved",
+    }).eq("id", report_id).execute()
+
+    db.table("consultations").update({
+        "status": "report_approved",
+    }).eq("id", report.data["consultation_id"]).execute()
+
+    return {
+        "id": report_id,
+        "status": "approved",
+        "access_token": report.data["access_token"],
+    }
+
+
+@router.post("/{report_id}/send-email")
+async def send_email(report_id: str):
+    """승인된 리포트에 대해 이메일 발송"""
+    db = get_supabase()
+
     report = (
         db.table("reports")
         .select("*, consultations(customer_name, customer_email)")
@@ -53,14 +87,12 @@ async def approve_report(report_id: str):
     if not report.data:
         raise HTTPException(status_code=404, detail="Report not found")
 
-    if report.data["status"] not in ("draft", "rejected"):
-        raise HTTPException(status_code=400, detail="Report cannot be approved in current status")
+    if report.data["status"] not in ("approved", "sent"):
+        raise HTTPException(status_code=400, detail="승인된 리포트만 발송할 수 있습니다")
 
     consultation = report.data["consultations"]
     access_token = report.data["access_token"]
 
-    # 이메일 발송
-    email_error = None
     try:
         await send_report_email(
             to_email=consultation["customer_email"],
@@ -68,29 +100,24 @@ async def approve_report(report_id: str):
             access_token=access_token,
         )
     except Exception as e:
-        email_error = str(e)
+        raise HTTPException(status_code=500, detail=f"이메일 발송 실패: {str(e)}")
 
-    # 상태 업데이트 (이메일 실패와 무관하게 승인 처리)
     now = datetime.now(timezone.utc).isoformat()
     db.table("reports").update({
         "status": "sent",
-        "email_sent_at": now if not email_error else None,
+        "email_sent_at": now,
     }).eq("id", report_id).execute()
 
     db.table("consultations").update({
         "status": "report_sent",
     }).eq("id", report.data["consultation_id"]).execute()
 
-    result = {
+    return {
         "id": report_id,
         "status": "sent",
         "email_sent_to": consultation["customer_email"],
         "access_token": access_token,
     }
-    if email_error:
-        result["email_error"] = email_error
-
-    return result
 
 
 @router.put("/{report_id}/reject")

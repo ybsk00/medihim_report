@@ -15,10 +15,9 @@ export default function ReportDetailPage({
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<"ja" | "ko">("ja");
   const [translating, setTranslating] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [showShare, setShowShare] = useState(false);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [showShare, setShowShare] = useState(false);
 
   useEffect(() => {
     reportAPI
@@ -57,13 +56,11 @@ export default function ReportDetailPage({
         prev
           ? {
               ...prev,
-              status: "sent" as const,
+              status: "approved" as const,
               access_token: result.access_token,
-              email_sent_at: new Date().toISOString(),
             }
           : prev
       );
-      setShowConfirm(false);
     } catch (err) {
       alert(`승인 실패: ${err instanceof Error ? err.message : "알 수 없는 오류"}`);
     } finally {
@@ -407,7 +404,7 @@ export default function ReportDetailPage({
         </div>
 
         {/* Action Buttons */}
-        {(report.status === "draft" || report.status === "approved") && (
+        {report.status === "draft" && (
           <div className="flex items-center justify-center gap-4">
             <button
               onClick={handleReject}
@@ -421,22 +418,39 @@ export default function ReportDetailPage({
               반려
             </button>
             <button
-              onClick={() => setShowConfirm(true)}
-              className="px-6 py-2.5 bg-emerald-500 text-white rounded-lg text-sm font-semibold hover:bg-emerald-600 transition-colors flex items-center gap-2"
+              onClick={handleApprove}
+              disabled={approving}
+              className="px-6 py-2.5 bg-emerald-500 text-white rounded-lg text-sm font-semibold hover:bg-emerald-600 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
+              {approving && (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              )}
               <span className="material-symbols-outlined text-lg">check</span>
               승인
             </button>
           </div>
         )}
 
-        {/* Post-Approval / Sent Info */}
+        {/* Approved Info */}
+        {report.status === "approved" && (
+          <div className="bg-white rounded-xl border border-emerald-200 shadow-sm p-6 space-y-3">
+            <div className="flex items-center gap-2 text-emerald-600">
+              <span className="material-symbols-outlined">check_circle</span>
+              <span className="text-sm font-semibold">승인 완료</span>
+            </div>
+            <p className="text-sm text-slate-500">
+              이메일 발송은 <Link href="/admin/emails" className="text-primary underline">이메일 발송</Link> 메뉴에서 진행하세요.
+            </p>
+          </div>
+        )}
+
+        {/* Sent Info */}
         {report.status === "sent" && (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
             <div className="flex items-center gap-2 text-emerald-600">
               <span className="material-symbols-outlined">check_circle</span>
               <span className="text-sm font-semibold">
-                이메일 자동 발송 완료 ({customerEmail})
+                이메일 발송 완료 ({customerEmail})
               </span>
             </div>
 
@@ -513,39 +527,6 @@ export default function ReportDetailPage({
         )}
       </div>
 
-      {/* Confirm Dialog */}
-      {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowConfirm(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl p-6 max-w-sm mx-4 text-center space-y-4">
-            <span className="material-symbols-outlined text-4xl text-amber-500">mail</span>
-            <p className="text-base font-bold text-slate-800">
-              이메일이 자동 발송됩니다.<br />승인하시겠습니까?
-            </p>
-            <p className="text-sm text-slate-500">
-              발송 대상: {customerEmail}
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="px-5 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleApprove}
-                disabled={approving}
-                className="px-5 py-2 bg-emerald-500 text-white rounded-lg text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 flex items-center gap-2"
-              >
-                {approving && (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                )}
-                승인 및 발송
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

@@ -210,7 +210,7 @@ export const reportAPI = {
   list: () => fetchAPI<{ data: Report[] }>("/reports"),
   get: (id: string) => fetchAPI<Report>(`/reports/${id}`),
   approve: (id: string) =>
-    fetchAPI<{ id: string; status: string; email_sent_to: string; access_token: string }>(
+    fetchAPI<{ id: string; status: string; access_token: string }>(
       `/reports/${id}/approve`,
       { method: "PUT" }
     ),
@@ -226,6 +226,11 @@ export const reportAPI = {
   translate: (id: string) =>
     fetchAPI<{ report_data_ko: ReportData; cached: boolean }>(
       `/reports/${id}/translate`
+    ),
+  sendEmail: (id: string) =>
+    fetchAPI<{ id: string; status: string; email_sent_to: string; access_token: string }>(
+      `/reports/${id}/send-email`,
+      { method: "POST" }
     ),
 };
 
