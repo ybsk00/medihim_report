@@ -23,10 +23,11 @@ def get_model():
 
 
 async def _retry_generate(model, prompt: str, max_retries: int = 3):
-    """Gemini generate_content를 재시도 로직과 함께 호출"""
+    """Gemini generate_content를 스레드 풀에서 실행 (이벤트 루프 블로킹 방지)"""
     for attempt in range(max_retries):
         try:
-            response = model.generate_content(prompt)
+            # 동기 호출을 스레드 풀에서 실행하여 이벤트 루프 블로킹 방지
+            response = await asyncio.to_thread(model.generate_content, prompt)
             if response and response.text:
                 return response
             # 빈 응답이면 재시도
@@ -62,7 +63,6 @@ async def generate_text(prompt: str, system_instruction: str = "") -> str:
 
 def _clean_json_text(text: str) -> str:
     """JSON 문자열 내부의 유효하지 않은 제어 문자 제거"""
-    # JSON 문자열 값 내부의 제어 문자(\x00-\x1f 중 \n \r \t 제외)를 공백으로 치환
     return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', ' ', text)
 
 
@@ -78,14 +78,21 @@ async def generate_json(prompt: str, system_instruction: str = "") -> str:
     return _clean_json_text(response.text)
 
 
+def _sync_embed_content(model_name: str, content: str, task_type: str, dims: int):
+    """동기 임베딩 호출 (스레드 풀에서 실행용)"""
+    return genai.embed_content(
+        model=model_name,
+        content=content,
+        task_type=task_type,
+        output_dimensionality=dims,
+    )
+
+
 async def get_embedding(text: str) -> list[float]:
     for attempt in range(3):
         try:
-            result = genai.embed_content(
-                model=_embedding_model,
-                content=text,
-                task_type="retrieval_document",
-                output_dimensionality=768,
+            result = await asyncio.to_thread(
+                _sync_embed_content, _embedding_model, text, "retrieval_document", 768
             )
             return result["embedding"]
         except Exception as e:
@@ -99,11 +106,8 @@ async def get_embedding(text: str) -> list[float]:
 async def get_query_embedding(text: str) -> list[float]:
     for attempt in range(3):
         try:
-            result = genai.embed_content(
-                model=_embedding_model,
-                content=text,
-                task_type="retrieval_query",
-                output_dimensionality=768,
+            result = await asyncio.to_thread(
+                _sync_embed_content, _embedding_model, text, "retrieval_query", 768
             )
             return result["embedding"]
         except Exception as e:
