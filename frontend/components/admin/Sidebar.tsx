@@ -7,13 +7,13 @@ import { logout, getUsername } from "@/lib/auth";
 const menuItems = [
   { href: "/admin", icon: "dashboard", label: "대시보드" },
   { href: "/admin/consultations", icon: "chat", label: "상담 관리" },
+  { href: "/admin/emails", icon: "mail", label: "이메일 발송" },
   {
     href: "/admin/unclassified",
     icon: "move_to_inbox",
     label: "미분류 처리",
   },
   { href: "/admin/reports", icon: "assignment", label: "리포트 관리" },
-  { href: "/admin/emails", icon: "mail", label: "이메일 발송" },
   { href: "/admin/vectors", icon: "database", label: "벡터DB 관리" },
 ];
 
