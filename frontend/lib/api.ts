@@ -1,16 +1,33 @@
+import { getToken, clearAuth } from "./auth";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options?.headers as Record<string, string>),
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
     ...options,
+    headers,
   });
 
+  if (res.status === 401) {
+    clearAuth();
+    if (typeof window !== "undefined") {
+      window.location.href = "/admin/login";
+    }
+    throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.");
+  }
+
   if (!res.ok) {
-    throw new Error(`API Error: ${res.status} ${res.statusText}`);
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail || `API Error: ${res.status} ${res.statusText}`);
   }
 
   return res.json();
@@ -129,6 +146,18 @@ export interface UnclassifiedItem {
   full_text: string;
 }
 
+export interface VectorItem {
+  id: string;
+  category: string;
+  question: string;
+  answer: string;
+  procedure_name: string | null;
+  youtube_video_id: string | null;
+  youtube_title: string | null;
+  youtube_url: string | null;
+  created_at: string;
+}
+
 // ============================================
 // 상담 API
 // ============================================
@@ -224,6 +253,11 @@ export interface AdminUser {
 }
 
 export const adminAPI = {
+  login: (username: string, password: string) =>
+    fetchAPI<{ token: string; username: string }>("/admin/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
   listUsers: () => fetchAPI<{ data: AdminUser[] }>("/admin/users"),
   createUser: (data: { username: string; password: string }) =>
     fetchAPI<AdminUser>("/admin/users", {
@@ -233,6 +267,27 @@ export const adminAPI = {
   deleteUser: (id: string) =>
     fetchAPI<{ deleted: boolean; id: string }>(`/admin/users/${id}`, {
       method: "DELETE",
+    }),
+};
+
+// ============================================
+// 벡터DB API
+// ============================================
+export const vectorAPI = {
+  list: (params?: Record<string, string>) => {
+    const query = params ? "?" + new URLSearchParams(params).toString() : "";
+    return fetchAPI<{ data: VectorItem[]; total: number; page: number; page_size: number }>(
+      `/vectors${query}`
+    );
+  },
+  delete: (id: string) =>
+    fetchAPI<{ deleted: boolean; id: string }>(`/vectors/${id}`, {
+      method: "DELETE",
+    }),
+  bulkDelete: (ids: string[]) =>
+    fetchAPI<{ deleted: number; ids: string[] }>("/vectors/bulk-delete", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
     }),
 };
 

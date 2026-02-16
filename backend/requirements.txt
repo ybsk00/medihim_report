@@ -9,3 +9,4 @@ python-dotenv
 httpx
 google-api-python-client
 bcrypt
+PyJWT

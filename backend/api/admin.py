@@ -1,9 +1,40 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 import bcrypt
+import jwt
+import datetime
 from models.schemas import AdminUserCreate
 from services.supabase_client import get_supabase
+from config import JWT_SECRET
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+@router.post("/login")
+async def login(data: LoginRequest):
+    db = get_supabase()
+    result = db.table("admin_users").select("id, username, password_hash").eq("username", data.username).execute()
+
+    if not result.data:
+        raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다")
+
+    user = result.data[0]
+    if not bcrypt.checkpw(data.password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+        raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다")
+
+    payload = {
+        "sub": user["id"],
+        "username": user["username"],
+        "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=24),
+    }
+    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+    return {"token": token, "username": user["username"]}
 
 
 @router.get("/users")
