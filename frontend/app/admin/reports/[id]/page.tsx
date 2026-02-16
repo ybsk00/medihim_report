@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { use } from "react";
-import { reportAPI, type Report, type ReportData } from "@/lib/api";
+import { reportAPI, isV2Report, type Report, type ReportData } from "@/lib/api";
 
 export default function ReportDetailPage({
   params,
@@ -151,6 +151,8 @@ export default function ReportDetailPage({
     );
   }
 
+  const v2 = isV2Report(reportData);
+
   return (
     <>
       <header className="h-16 bg-white border-b border-slate-200 flex items-center px-8 sticky top-0 z-10">
@@ -230,7 +232,7 @@ export default function ReportDetailPage({
                     {lang === "ja" ? "今回のご相談まとめ" : "이번 상담 정리"}
                   </h3>
                   <div className="bg-white rounded-lg p-4 card-shadow">
-                    <p className="text-sm text-text-dark leading-relaxed mb-3">
+                    <p className="text-sm text-text-dark leading-[1.8] mb-3">
                       {reportData.section1_summary.text}
                     </p>
                     <ul className="space-y-2">
@@ -250,21 +252,59 @@ export default function ReportDetailPage({
                     <span className="w-1 h-5 bg-coral rounded-full"></span>
                     {lang === "ja" ? "ご希望されている方向" : "희망 방향"}
                   </h3>
-                  <div className="bg-white rounded-lg p-4 card-shadow mb-3">
-                    <ul className="space-y-2">
-                      {reportData.section2_direction.desired.map((d, i) => (
-                        <li key={i} className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-coral text-[20px]">check_circle</span>
-                          <span className="text-sm font-medium">{d}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="bg-coral/10 border-l-4 border-coral p-3 rounded-r-lg">
-                    <p className="text-sm italic text-text-dark leading-relaxed">
-                      {reportData.section2_direction.quote}
-                    </p>
-                  </div>
+                  {v2 && reportData.section2_direction.items ? (
+                    <>
+                      <div className="bg-white rounded-lg p-4 card-shadow mb-3">
+                        <ul className="space-y-3">
+                          {reportData.section2_direction.items.map((item, i) => (
+                            <li key={i}>
+                              <div className="flex items-start gap-2">
+                                <span className="material-symbols-outlined text-coral text-[20px] flex-shrink-0 mt-0.5">check_circle</span>
+                                <div>
+                                  <span className="text-sm font-bold text-text-dark">{item.text}</span>
+                                  {item.detail && (
+                                    <p className="text-sm text-gray-600 mt-1 leading-relaxed">{item.detail}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      {reportData.section2_direction.conclusion && (
+                        <div className="bg-coral/10 border-l-4 border-coral p-3 rounded-r-lg mb-2">
+                          <p className="text-sm text-text-dark leading-[1.8]">
+                            {reportData.section2_direction.conclusion}
+                          </p>
+                        </div>
+                      )}
+                      {reportData.section2_direction.interpretation && (
+                        <p className="text-sm text-gray-600 leading-relaxed px-1">
+                          {reportData.section2_direction.interpretation}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="bg-white rounded-lg p-4 card-shadow mb-3">
+                        <ul className="space-y-2">
+                          {(reportData.section2_direction.desired || []).map((d, i) => (
+                            <li key={i} className="flex items-center gap-2">
+                              <span className="material-symbols-outlined text-coral text-[20px]">check_circle</span>
+                              <span className="text-sm font-medium">{d}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      {reportData.section2_direction.quote && (
+                        <div className="bg-coral/10 border-l-4 border-coral p-3 rounded-r-lg">
+                          <p className="text-sm italic text-text-dark leading-relaxed">
+                            {reportData.section2_direction.quote}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </section>
 
                 {/* Section 3 */}
@@ -276,17 +316,21 @@ export default function ReportDetailPage({
                   <div className="bg-white rounded-lg p-4 card-shadow space-y-3">
                     {reportData.section3_concerns.points.map((p, i) => (
                       <div key={i} className="flex items-start gap-2 border-b border-gray-50 pb-2 last:border-0">
-                        <span className="material-symbols-outlined text-amber-500">warning</span>
+                        <span className="material-symbols-outlined text-amber-500 flex-shrink-0">warning</span>
                         <div>
                           <p className="text-sm font-bold">{p.title}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{p.sub}</p>
+                          <p className="text-sm text-gray-600 mt-1 leading-relaxed">
+                            {p.description || p.sub}
+                          </p>
                         </div>
                       </div>
                     ))}
-                    <p className="text-[11px] text-gray-400 text-center italic">
-                      {reportData.section3_concerns.supplement}
-                    </p>
                   </div>
+                  {(reportData.section3_concerns.interpretation || reportData.section3_concerns.supplement) && (
+                    <p className="text-sm text-gray-600 mt-3 leading-relaxed px-1">
+                      {reportData.section3_concerns.interpretation || reportData.section3_concerns.supplement}
+                    </p>
+                  )}
                 </section>
 
                 {/* Section 4 */}
@@ -295,15 +339,48 @@ export default function ReportDetailPage({
                     <span className="w-1 h-5 bg-coral rounded-full"></span>
                     {lang === "ja" ? "医療的なご説明" : "의료적 설명"}
                   </h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {reportData.section4_medical.explanations.map((e, i) => (
-                      <div key={i} className="bg-white p-3 rounded-lg card-shadow text-center">
-                        <span className="material-symbols-outlined text-soft-blue mb-1 text-2xl">{e.icon}</span>
-                        <p className="text-[10px] font-bold text-coral mb-0.5">{e.label}</p>
-                        <p className="text-xs font-bold leading-tight">{e.title}</p>
-                      </div>
-                    ))}
-                  </div>
+                  {v2 ? (
+                    <div className="space-y-4">
+                      {reportData.section4_medical.explanations.map((e, i) => (
+                        <div key={i} className="bg-white rounded-lg p-4 card-shadow">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="flex-shrink-0 w-6 h-6 bg-coral/10 text-coral rounded-full flex items-center justify-center text-xs font-bold">
+                              {e.number || i + 1}
+                            </span>
+                            <h4 className="text-sm font-bold text-text-dark">{e.title}</h4>
+                          </div>
+                          <p className="text-sm text-text-dark leading-[1.8]">{e.text}</p>
+                          {e.citation && (
+                            <div className="mt-2 bg-slate-50 border-l-[3px] border-blue-400 rounded-r-lg p-2">
+                              <p className="text-[11px] text-gray-500">
+                                {e.citation.stat && (
+                                  <span className="font-semibold text-blue-600">{e.citation.stat} — </span>
+                                )}
+                                <a href={e.citation.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                                  {e.citation.title}
+                                </a>
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {reportData.section4_medical.footnote && (
+                        <p className="text-[11px] text-gray-400 text-center leading-relaxed">
+                          {reportData.section4_medical.footnote}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {reportData.section4_medical.explanations.map((e, i) => (
+                        <div key={i} className="bg-white p-3 rounded-lg card-shadow text-center">
+                          <span className="material-symbols-outlined text-soft-blue mb-1 text-2xl">{e.icon}</span>
+                          <p className="text-[10px] font-bold text-coral mb-0.5">{e.label}</p>
+                          <p className="text-xs font-bold leading-tight">{e.title}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </section>
 
                 {/* Section 5 */}
@@ -319,10 +396,15 @@ export default function ReportDetailPage({
                           <span className="text-coral font-black text-lg italic">{s.step}</span>
                           <span className="text-sm font-bold text-text-dark">{s.title}</span>
                         </div>
-                        <p className="text-xs text-gray-600">{s.desc}</p>
+                        <p className="text-sm text-gray-600 leading-[1.7]">{s.desc}</p>
                       </div>
                     ))}
                   </div>
+                  {reportData.section5_proposal.context_note && (
+                    <p className="text-sm text-gray-600 mt-3 leading-relaxed px-1">
+                      {reportData.section5_proposal.context_note}
+                    </p>
+                  )}
                 </section>
 
                 {/* Section 6 */}
@@ -332,22 +414,37 @@ export default function ReportDetailPage({
                     {lang === "ja" ? "選択肢の整理" : "선택지 정리"}
                   </h3>
                   <div className="space-y-2">
-                    <div className="bg-white p-3 rounded-lg card-shadow border border-green-100">
-                      <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded">RECOMMENDED</span>
-                      <p className="text-sm font-bold text-text-dark mt-1">{reportData.section6_options.recommended.title}</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">{reportData.section6_options.recommended.desc}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded-lg card-shadow border border-blue-100">
-                      <span className="bg-blue-100 text-soft-blue text-[10px] font-bold px-2 py-0.5 rounded">SUGGESTION</span>
-                      <p className="text-sm font-bold text-text-dark mt-1">{reportData.section6_options.optional.title}</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">{reportData.section6_options.optional.desc}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded-lg card-shadow border border-gray-100 opacity-60">
-                      <span className="bg-gray-100 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded">NOT NEEDED</span>
-                      <p className="text-sm font-bold text-gray-400 mt-1">{reportData.section6_options.unnecessary.title}</p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">{reportData.section6_options.unnecessary.desc}</p>
-                    </div>
+                    {/* Recommended */}
+                    <OptionBlock
+                      data={reportData.section6_options.recommended}
+                      badge="RECOMMENDED"
+                      badgeColor="bg-green-100 text-green-700"
+                      borderColor="border-green-100"
+                      v2={v2}
+                    />
+                    {/* Optional */}
+                    <OptionBlock
+                      data={reportData.section6_options.optional}
+                      badge="SUGGESTION"
+                      badgeColor="bg-blue-100 text-soft-blue"
+                      borderColor="border-blue-100"
+                      v2={v2}
+                    />
+                    {/* Unnecessary */}
+                    <OptionBlock
+                      data={reportData.section6_options.unnecessary}
+                      badge="NOT NEEDED"
+                      badgeColor="bg-gray-100 text-gray-500"
+                      borderColor="border-gray-100"
+                      v2={v2}
+                      dimmed
+                    />
                   </div>
+                  {reportData.section6_options.comment && (
+                    <p className="text-sm text-gray-600 text-center mt-3 leading-relaxed">
+                      {reportData.section6_options.comment}
+                    </p>
+                  )}
                 </section>
 
                 {/* Section 7 */}
@@ -367,8 +464,8 @@ export default function ReportDetailPage({
                       <tbody className="divide-y divide-gray-100">
                         {reportData.section7_recovery.info.map((r, i) => (
                           <tr key={i}>
-                            <td className="px-3 py-2 font-bold text-text-dark">{r.period}</td>
-                            <td className="px-3 py-2">{r.detail}</td>
+                            <td className="px-3 py-2 font-bold text-text-dark whitespace-nowrap">{r.period}</td>
+                            <td className="px-3 py-2 leading-relaxed">{r.detail}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -378,10 +475,15 @@ export default function ReportDetailPage({
                     <p className="text-sm font-bold text-coral mb-1">
                       {lang === "ja" ? "次の一歩に向けて" : "다음 단계를 위해"}
                     </p>
-                    <p className="text-xs text-text-dark leading-relaxed">
+                    <p className="text-sm text-text-dark leading-[1.8]">
                       {reportData.section7_recovery.closing}
                     </p>
                   </div>
+                  {reportData.section7_recovery.gentle_note && (
+                    <p className="text-sm text-gray-500 text-center mt-2 leading-relaxed">
+                      {reportData.section7_recovery.gentle_note}
+                    </p>
+                  )}
                 </section>
               </div>
 
@@ -528,5 +630,51 @@ export default function ReportDetailPage({
       </div>
 
     </>
+  );
+}
+
+/** 관리자 미리보기용 옵션 블록 */
+function OptionBlock({
+  data,
+  badge,
+  badgeColor,
+  borderColor,
+  v2,
+  dimmed,
+}: {
+  data: { category_label?: string; items?: string[]; title?: string; desc?: string };
+  badge: string;
+  badgeColor: string;
+  borderColor: string;
+  v2: boolean;
+  dimmed?: boolean;
+}) {
+  if (v2 && Array.isArray(data.items)) {
+    return (
+      <div className={`bg-white p-3 rounded-lg card-shadow border ${borderColor} ${dimmed ? "opacity-60" : ""}`}>
+        <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded ${badgeColor}`}>{badge}</span>
+        {data.category_label && (
+          <p className={`text-sm font-bold mt-1 ${dimmed ? "text-gray-400" : "text-text-dark"}`}>
+            {data.category_label}
+          </p>
+        )}
+        <ul className="mt-1 space-y-1">
+          {data.items.map((item, i) => (
+            <li key={i} className="flex items-start gap-1.5">
+              <span className={`text-xs mt-0.5 ${dimmed ? "text-gray-300" : "text-gray-400"}`}>•</span>
+              <span className={`text-sm leading-relaxed ${dimmed ? "text-gray-400" : "text-text-dark"}`}>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+  // V1
+  return (
+    <div className={`bg-white p-3 rounded-lg card-shadow border ${borderColor} ${dimmed ? "opacity-60" : ""}`}>
+      <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded ${badgeColor}`}>{badge}</span>
+      <p className={`text-sm font-bold mt-1 ${dimmed ? "text-gray-400" : "text-text-dark"}`}>{data.title}</p>
+      <p className={`text-[11px] mt-0.5 ${dimmed ? "text-gray-400" : "text-gray-500"}`}>{data.desc}</p>
+    </div>
   );
 }

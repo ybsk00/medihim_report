@@ -107,6 +107,15 @@ export default function ConsumerReportPage({
     );
   }
 
+  // V1/V2 호환: section2
+  const s2 = report.section2_direction;
+  const s2Props = s2.items
+    ? { items: s2.items, conclusion: s2.conclusion, interpretation: s2.interpretation }
+    : { desired: s2.desired, quote: s2.quote };
+
+  // V1/V2 호환: section3
+  const s3 = report.section3_concerns;
+
   return (
     <div className="mobile-container font-[Noto_Sans_JP]">
       {/* Dot Navigation */}
@@ -144,27 +153,29 @@ export default function ConsumerReportPage({
         </div>
 
         <div ref={(el) => { sectionRefs.current[1] = el; }}>
-          <Section2Direction
-            desired={report.section2_direction.desired}
-            quote={report.section2_direction.quote}
-          />
+          <Section2Direction {...s2Props} />
         </div>
 
         <div ref={(el) => { sectionRefs.current[2] = el; }}>
           <Section3Concerns
-            points={report.section3_concerns.points}
-            supplement={report.section3_concerns.supplement}
+            points={s3.points}
+            interpretation={s3.interpretation}
+            supplement={s3.supplement}
           />
         </div>
 
         <div ref={(el) => { sectionRefs.current[3] = el; }}>
           <Section4Medical
             explanations={report.section4_medical.explanations}
+            footnote={report.section4_medical.footnote}
           />
         </div>
 
         <div ref={(el) => { sectionRefs.current[4] = el; }}>
-          <Section5Proposal steps={report.section5_proposal.steps} />
+          <Section5Proposal
+            steps={report.section5_proposal.steps}
+            context_note={report.section5_proposal.context_note}
+          />
         </div>
 
         <div ref={(el) => { sectionRefs.current[5] = el; }}>
@@ -172,6 +183,7 @@ export default function ConsumerReportPage({
             recommended={report.section6_options.recommended}
             optional={report.section6_options.optional}
             unnecessary={report.section6_options.unnecessary}
+            comment={report.section6_options.comment}
           />
         </div>
 
@@ -179,6 +191,7 @@ export default function ConsumerReportPage({
           <Section7Recovery
             info={report.section7_recovery.info}
             closing={report.section7_recovery.closing}
+            gentle_note={report.section7_recovery.gentle_note}
           />
         </div>
       </div>

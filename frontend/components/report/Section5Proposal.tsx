@@ -6,9 +6,10 @@ interface ProposalStep {
 
 interface Section5Props {
   steps: ProposalStep[];
+  context_note?: string;
 }
 
-export default function Section5Proposal({ steps }: Section5Props) {
+export default function Section5Proposal({ steps, context_note }: Section5Props) {
   return (
     <section className="fade-in-section">
       <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
@@ -27,10 +28,15 @@ export default function Section5Proposal({ steps }: Section5Props) {
               </span>
               <span className="text-sm font-bold text-text-dark">{s.title}</span>
             </div>
-            <p className="text-xs text-gray-600">{s.desc}</p>
+            <p className="text-sm text-gray-600 leading-[1.7]">{s.desc}</p>
           </div>
         ))}
       </div>
+      {context_note && (
+        <p className="text-sm text-gray-600 mt-4 leading-relaxed px-1">
+          {context_note}
+        </p>
+      )}
     </section>
   );
 }

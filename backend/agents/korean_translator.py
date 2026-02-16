@@ -8,7 +8,8 @@ SYSTEM_INSTRUCTION = """당신은 일본어→한국어 의료 문서 번역 전
 - 의료 용어는 정확하게 번역
 - 원본 JSON 구조를 그대로 유지
 - 자연스러운 한국어 어투 사용
-- 제안형 표현 유지 ("~로 이해되었습니다", "~을 추천드립니다")"""
+- 제안형 표현 유지 ("~로 이해되었습니다", "~을 추천드립니다")
+- citation 내의 URL, title은 번역하지 않고 원문 그대로 유지"""
 
 
 async def translate_report_to_korean(report_data: dict) -> dict:

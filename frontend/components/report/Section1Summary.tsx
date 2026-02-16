@@ -11,7 +11,7 @@ export default function Section1Summary({ text, points }: Section1Props) {
         OO様のための今回のご相談まとめ
       </h3>
       <div className="bg-white rounded-lg p-5 card-shadow">
-        <p className="text-sm text-text-dark leading-relaxed mb-4">{text}</p>
+        <p className="text-sm text-text-dark leading-[1.8] mb-4">{text}</p>
         <ul className="space-y-3">
           {points.map((point, i) => (
             <li key={i} className="flex items-start gap-3">
