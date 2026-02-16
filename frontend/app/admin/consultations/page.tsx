@@ -17,12 +17,12 @@ const CTA_MAP: Record<string, { label: string; color: string }> = {
 };
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  processing: { label: "처리 중", color: "text-blue-500" },
-  classification_pending: { label: "분류 대기", color: "text-slate-400" },
+  processing: { label: "AI 분석 중", color: "text-blue-500" },
+  classification_pending: { label: "분류 대기", color: "text-amber-500" },
   report_generating: { label: "리포트 생성 중", color: "text-blue-500" },
-  report_ready: { label: "승인 대기", color: "text-amber-600" },
+  report_ready: { label: "리포트 완료", color: "text-indigo-600" },
   report_approved: { label: "승인 완료", color: "text-emerald-600" },
-  report_sent: { label: "발송 완료", color: "text-emerald-600" },
+  report_sent: { label: "발송 완료", color: "text-emerald-700" },
   report_failed: { label: "처리 실패", color: "text-red-500" },
 };
 
@@ -126,10 +126,12 @@ export default function ConsultationsPage() {
               className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="all">상태 전체</option>
-              <option value="report_sent">발송 완료</option>
-              <option value="report_ready">승인 대기</option>
+              <option value="processing">AI 분석 중</option>
               <option value="classification_pending">분류 대기</option>
-              <option value="processing">처리 중</option>
+              <option value="report_generating">리포트 생성 중</option>
+              <option value="report_ready">리포트 완료</option>
+              <option value="report_approved">승인 완료</option>
+              <option value="report_sent">발송 완료</option>
               <option value="report_failed">처리 실패</option>
             </select>
           </div>

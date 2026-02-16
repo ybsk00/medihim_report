@@ -5,10 +5,10 @@ import Link from "next/link";
 import { reportAPI, type Report } from "@/lib/api";
 
 const STATUS_BADGE: Record<string, { label: string; color: string }> = {
-  draft: { label: "생성 완료", color: "bg-blue-100 text-blue-800" },
-  approved: { label: "승인 완료", color: "bg-amber-100 text-amber-800" },
+  draft: { label: "검토 대기", color: "bg-blue-100 text-blue-800" },
+  approved: { label: "승인 완료", color: "bg-emerald-100 text-emerald-800" },
   rejected: { label: "반려", color: "bg-red-100 text-red-800" },
-  sent: { label: "발송 완료", color: "bg-emerald-100 text-emerald-800" },
+  sent: { label: "발송 완료", color: "bg-slate-100 text-slate-600" },
 };
 
 const CLASSIFICATION_MAP: Record<string, string> = {
