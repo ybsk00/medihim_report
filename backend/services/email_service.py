@@ -1,7 +1,11 @@
-import resend
-from config import RESEND_API_KEY, FROM_EMAIL, REPLY_TO_EMAIL, FRONTEND_URL
+import asyncio
+import logging
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from config import GMAIL_ADDRESS, GMAIL_APP_PASSWORD, FRONTEND_URL
 
-resend.api_key = RESEND_API_KEY
+logger = logging.getLogger(__name__)
 
 
 async def send_report_email(
@@ -54,15 +58,18 @@ async def send_report_email(
     </html>
     """
 
-    params = {
-        "from": FROM_EMAIL,
-        "to": [to_email],
-        "subject": f"【イッポ】{customer_name}様 ご相談リポートが届きました",
-        "html": html_content,
-    }
+    msg = MIMEMultipart("alternative")
+    msg["From"] = f"イッポ <{GMAIL_ADDRESS}>"
+    msg["To"] = to_email
+    msg["Subject"] = f"【イッポ】{customer_name}様 ご相談リポートが届きました"
+    msg["Reply-To"] = GMAIL_ADDRESS
+    msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-    if REPLY_TO_EMAIL:
-        params["reply_to"] = REPLY_TO_EMAIL
+    def _send():
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
+            server.send_message(msg)
 
-    result = resend.Emails.send(params)
-    return result
+    await asyncio.to_thread(_send)
+    logger.info(f"[Email] Sent to {to_email} for {customer_name}")
+    return {"id": "gmail", "to": to_email}
