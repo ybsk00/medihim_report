@@ -1,0 +1,9 @@
+.env
+.env.*
+__pycache__/
+*.pyc
+cookies.txt
+scripts/pubmed_articles.json
+.git
+.gitignore
+nul
