@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { logout, getUsername } from "@/lib/auth";
 
 const menuItems = [
   { href: "/admin", icon: "dashboard", label: "대시보드" },
@@ -10,17 +11,24 @@ const menuItems = [
     href: "/admin/unclassified",
     icon: "move_to_inbox",
     label: "미분류 처리",
-    badge: 3,
   },
   { href: "/admin/reports", icon: "assignment", label: "리포트 관리" },
+  { href: "/admin/vectors", icon: "database", label: "벡터DB 관리" },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const username = getUsername();
 
   const isActive = (href: string) => {
     if (href === "/admin") return pathname === "/admin";
     return pathname.startsWith(href);
+  };
+
+  const handleLogout = () => {
+    if (confirm("로그아웃 하시겠습니까?")) {
+      logout();
+    }
   };
 
   return (
@@ -68,11 +76,6 @@ export default function Sidebar() {
                 {item.label}
               </span>
             </div>
-            {item.badge !== undefined && item.badge > 0 && (
-              <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {item.badge}
-              </span>
-            )}
           </Link>
         ))}
 
@@ -104,9 +107,15 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      {/* Logout */}
+      {/* User + Logout */}
       <div className="p-4 border-t border-slate-700">
-        <button className="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white cursor-pointer w-full">
+        {username && (
+          <p className="text-slate-400 text-xs mb-2 px-3">{username}</p>
+        )}
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white cursor-pointer w-full rounded-lg hover:bg-slate-800 transition-colors"
+        >
           <span className="material-symbols-outlined">logout</span>
           <span className="text-sm font-medium">로그아웃</span>
         </button>

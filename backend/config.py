@@ -10,6 +10,7 @@ RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 REPLY_TO_EMAIL = os.getenv("REPLY_TO_EMAIL", "")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "report@ippo.co.kr")
+JWT_SECRET = os.getenv("JWT_SECRET", "medihim-ippo-jwt-secret-key-2026")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # PubMed / NCBI
