@@ -139,7 +139,7 @@ async def write_report(
                 "title": "医療的説明のタイトル",
                 "text": "詳細な医療的説明（3~5文。なぜそのような状態になるのか、医学的な根拠を分かりやすく丁寧に説明する。）",
                 "citation": {{
-                    "title": "PubMed論文タイトル（PubMed統計/数値を引用した場合のみ。なければcitationフィールド自体を省略）",
+                    "title": "PubMed論文タイトルを日本語に翻訳して記載（英語のまま使用しない。なければcitationフィールド自体を省略）",
                     "url": "https://pubmed.ncbi.nlm.nih.gov/PMID/",
                     "stat": "引用した具体的統計（例: 満足度92.3%）"
                 }}
@@ -212,6 +212,7 @@ async def write_report(
 - RAG資料がない施術は「ご来院時に詳しくご案内いたします」で対応
 - 全セクション必須
 - PubMed論文の統計/数値を引用する場合のみ citation フィールドを追加（統計がない一般説明にはcitation不要）
+- citation の title は必ず日本語に翻訳すること（英語の論文タイトルをそのまま使わない）。URLはそのまま保持
 - YouTube/一般医療知識に基づく説明にはcitation不要
 - section4のtextは必ず3文以上で記述すること
 - section5のdescは必ず3文以上で記述すること
