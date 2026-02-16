@@ -91,31 +91,63 @@ export interface Report {
   };
 }
 
+export interface ReportCitation {
+  title: string;
+  url: string;
+  stat?: string;
+}
+
 export interface ReportData {
   title: string;
   date: string;
   section1_summary: { text: string; points: string[] };
-  section2_direction: { desired: string[]; quote: string };
+  section2_direction: {
+    items: { text: string; detail?: string }[];
+    conclusion: string;
+    interpretation?: string;
+    // V1 compat
+    desired?: string[];
+    quote?: string;
+  };
   section3_concerns: {
-    points: { title: string; sub: string }[];
-    supplement: string;
+    points: { title: string; description: string; sub?: string }[];
+    interpretation: string;
+    supplement?: string;
   };
   section4_medical: {
-    explanations: { label: string; icon: string; title: string }[];
+    explanations: {
+      number: number;
+      title: string;
+      text: string;
+      citation?: ReportCitation;
+      // V1 compat
+      label?: string;
+      icon?: string;
+    }[];
+    footnote?: string;
   };
   section5_proposal: {
     steps: { step: string; title: string; desc: string }[];
+    context_note?: string;
   };
   section6_options: {
-    recommended: { title: string; desc: string };
-    optional: { title: string; desc: string };
-    unnecessary: { title: string; desc: string };
+    recommended: { category_label?: string; items: string[]; title?: string; desc?: string };
+    optional: { category_label?: string; items: string[]; title?: string; desc?: string };
+    unnecessary: { category_label?: string; items: string[]; title?: string; desc?: string };
     comment?: string;
   };
   section7_recovery: {
     info: { period: string; detail: string }[];
     closing: string;
+    gentle_note?: string;
   };
+}
+
+/** V2 리포트인지 판별 (section4에 text 필드 존재 여부) */
+export function isV2Report(data: ReportData): boolean {
+  const exps = data.section4_medical?.explanations;
+  if (!exps || exps.length === 0) return false;
+  return typeof exps[0].text === "string" && exps[0].text.length > 0;
 }
 
 export interface DashboardStats {
