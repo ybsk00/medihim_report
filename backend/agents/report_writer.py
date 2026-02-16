@@ -238,6 +238,8 @@ async def write_report(
         result = await generate_json(prompt, SYSTEM_INSTRUCTION)
         try:
             report = json.loads(result)
+            if isinstance(report, list):
+                report = report[0] if report else {}
             break
         except json.JSONDecodeError as e:
             logger.warning(f"[ReportWriter] JSON parse error (attempt {parse_attempt + 1}): {str(e)[:100]}")

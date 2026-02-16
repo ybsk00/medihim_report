@@ -29,4 +29,7 @@ JSON 형식으로 반환:
 {translated_text}"""
 
     result = await generate_json(prompt, SYSTEM_INSTRUCTION)
-    return json.loads(result)
+    data = json.loads(result)
+    if isinstance(data, list):
+        data = data[0] if data else {}
+    return data

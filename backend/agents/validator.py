@@ -15,6 +15,8 @@ async def validate_classification(
     translated_text: str,
     intent_extraction: dict,
 ) -> dict:
+    if isinstance(classification_result, list):
+        classification_result = classification_result[0] if classification_result else {}
     confidence = classification_result.get("confidence", 0.0)
     classification = classification_result.get("classification", "unclassified")
 
@@ -51,4 +53,7 @@ JSON 형식:
 }}"""
 
     result = await generate_json(prompt, SYSTEM_INSTRUCTION)
-    return json.loads(result)
+    data = json.loads(result)
+    if isinstance(data, list):
+        data = data[0] if data else {}
+    return data

@@ -24,4 +24,7 @@ JSON 구조는 그대로 유지하고 텍스트만 한국어로 번역하세요.
 한국어 번역된 동일 구조의 JSON을 반환하세요."""
 
     result = await generate_json(prompt, SYSTEM_INSTRUCTION)
-    return json.loads(result)
+    data = json.loads(result)
+    if isinstance(data, list):
+        data = data[0] if data else {}
+    return data
