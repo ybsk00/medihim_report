@@ -54,9 +54,8 @@ export default function ReportsPage() {
     }
   };
 
-  const handleBulkApprove = async () => {
-    // 선택된 중 draft/rejected 상태인 것만 승인 대상
-    const approvableIds = Array.from(selectedIds).filter((rid) => {
+  const handleBulkApprove = async (ids: string[]) => {
+    const approvableIds = ids.filter((rid) => {
       const r = reports.find((rep) => rep.id === rid);
       return r && (r.status === "draft" || r.status === "rejected");
     });
@@ -85,6 +84,8 @@ export default function ReportsPage() {
     }
   };
 
+  const draftCount = reports.filter((r) => r.status === "draft" || r.status === "rejected").length;
+
   const filteredReports = statusFilter === "all"
     ? reports
     : reports.filter((r) => r.status === statusFilter);
@@ -105,19 +106,33 @@ export default function ReportsPage() {
             <option value="rejected">반려</option>
             <option value="sent">발송 완료</option>
           </select>
+          {draftCount > 0 && (
+            <button
+              onClick={() => handleBulkApprove(reports.map((r) => r.id))}
+              disabled={approving}
+              className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              {approving ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <span className="material-symbols-outlined text-lg">check_circle</span>
+              )}
+              전체 승인 ({draftCount}건)
+            </button>
+          )}
           {selectedIds.size > 0 && (
             <>
               <button
-                onClick={handleBulkApprove}
+                onClick={() => handleBulkApprove(Array.from(selectedIds))}
                 disabled={approving}
-                className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 {approving ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 ) : (
-                  <span className="material-symbols-outlined text-lg">check_circle</span>
+                  <span className="material-symbols-outlined text-lg">done_all</span>
                 )}
-                일괄 승인 ({selectedIds.size}건)
+                선택 승인 ({selectedIds.size}건)
               </button>
               <button
                 onClick={handleDelete}

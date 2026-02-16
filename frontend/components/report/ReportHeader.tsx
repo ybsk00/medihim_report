@@ -29,7 +29,7 @@ export default function ReportHeader({ title, date }: ReportHeaderProps) {
           {title}
         </h2>
         <p className="text-xs text-gray-500 mt-2 font-medium">
-          作成日：{date}
+          {date.startsWith("作成日") ? date : `作成日：${date}`}
         </p>
       </div>
     </header>
