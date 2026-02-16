@@ -72,8 +72,19 @@ class ReportRegenerateRequest(BaseModel):
     direction: str
 
 
+class ConsultationUpdateRequest(BaseModel):
+    customer_name: Optional[str] = None
+    customer_email: Optional[str] = None
+    customer_line_id: Optional[str] = None
+    customer_id: Optional[str] = None
+
+
 class GenerateReportsRequest(BaseModel):
     consultation_ids: List[str]
+
+
+class BulkApproveRequest(BaseModel):
+    report_ids: List[str]
 
 
 class BirthDateVerify(BaseModel):

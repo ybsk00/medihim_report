@@ -21,6 +21,8 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const fetchData = () => {
     setLoading(true);
@@ -52,24 +54,86 @@ export default function ReportsPage() {
     }
   };
 
+  const handleBulkApprove = async () => {
+    // 선택된 중 draft/rejected 상태인 것만 승인 대상
+    const approvableIds = Array.from(selectedIds).filter((rid) => {
+      const r = reports.find((rep) => rep.id === rid);
+      return r && (r.status === "draft" || r.status === "rejected");
+    });
+
+    if (approvableIds.length === 0) {
+      alert("승인 가능한 리포트가 없습니다. (검토대기 또는 반려 상태만 승인 가능)");
+      return;
+    }
+
+    if (!confirm(`${approvableIds.length}건의 리포트를 일괄 승인하시겠습니까?\n(이메일은 발송되지 않습니다. 개별 발송해주세요.)`)) return;
+
+    setApproving(true);
+    try {
+      const result = await reportAPI.bulkApprove(approvableIds);
+      let msg = `${result.approved}건이 승인되었습니다.`;
+      if (result.skipped.length > 0) {
+        msg += `\n${result.skipped.length}건은 건너뛰었습니다.`;
+      }
+      alert(msg);
+      setSelectedIds(new Set());
+      fetchData();
+    } catch (err) {
+      alert(`승인 실패: ${err instanceof Error ? err.message : "알 수 없는 오류"}`);
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const filteredReports = statusFilter === "all"
+    ? reports
+    : reports.filter((r) => r.status === statusFilter);
+
   return (
     <>
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
         <h2 className="text-xl font-bold text-slate-800">리포트 관리</h2>
-        {selectedIds.size > 0 && (
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+        <div className="flex items-center gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setSelectedIds(new Set()); }}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-            {deleting ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <span className="material-symbols-outlined text-lg">delete</span>
-            )}
-            삭제 ({selectedIds.size}건)
-          </button>
-        )}
+            <option value="all">상태 전체</option>
+            <option value="draft">검토 대기</option>
+            <option value="approved">승인 완료</option>
+            <option value="rejected">반려</option>
+            <option value="sent">발송 완료</option>
+          </select>
+          {selectedIds.size > 0 && (
+            <>
+              <button
+                onClick={handleBulkApprove}
+                disabled={approving}
+                className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {approving ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <span className="material-symbols-outlined text-lg">check_circle</span>
+                )}
+                일괄 승인 ({selectedIds.size}건)
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {deleting ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <span className="material-symbols-outlined text-lg">delete</span>
+                )}
+                삭제 ({selectedIds.size}건)
+              </button>
+            </>
+          )}
+        </div>
       </header>
 
       <div className="p-8 max-w-[1400px] mx-auto w-full space-y-6">
@@ -92,10 +156,10 @@ export default function ReportsPage() {
                       <input
                         type="checkbox"
                         className="rounded border-slate-300"
-                        checked={reports.length > 0 && reports.every((r) => selectedIds.has(r.id))}
+                        checked={filteredReports.length > 0 && filteredReports.every((r) => selectedIds.has(r.id))}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedIds(new Set(reports.map((r) => r.id)));
+                            setSelectedIds(new Set(filteredReports.map((r) => r.id)));
                           } else {
                             setSelectedIds(new Set());
                           }
@@ -111,7 +175,7 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
-                  {reports.map((report) => {
+                  {filteredReports.map((report) => {
                     const badge = STATUS_BADGE[report.status] || {
                       label: report.status,
                       color: "bg-slate-100 text-slate-800",

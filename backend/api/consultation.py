@@ -1,7 +1,7 @@
 import asyncio
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from typing import Optional
-from models.schemas import ConsultationCreate, ConsultationBulkCreate, ClassifyRequest, CTAUpdateRequest, GenerateReportsRequest
+from models.schemas import ConsultationCreate, ConsultationBulkCreate, ClassifyRequest, CTAUpdateRequest, GenerateReportsRequest, ConsultationUpdateRequest
 from services.supabase_client import get_supabase
 from agents.pipeline import run_pipeline, resume_pipeline
 
@@ -149,6 +149,32 @@ async def get_consultation(consultation_id: str):
         raise HTTPException(status_code=404, detail="Consultation not found")
 
     return result.data
+
+
+@router.put("/{consultation_id}")
+async def update_consultation(consultation_id: str, data: ConsultationUpdateRequest):
+    """고객 정보 수정 (이름, 이메일, LINE ID, 플랫폼 ID)"""
+    db = get_supabase()
+
+    update_data = {}
+    if data.customer_name is not None:
+        update_data["customer_name"] = data.customer_name
+    if data.customer_email is not None:
+        update_data["customer_email"] = data.customer_email
+    if data.customer_line_id is not None:
+        update_data["customer_line_id"] = data.customer_line_id
+    if data.customer_id is not None:
+        update_data["customer_id"] = data.customer_id
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="수정할 데이터가 없습니다")
+
+    result = db.table("consultations").update(update_data).eq("id", consultation_id).execute()
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+
+    return result.data[0]
 
 
 @router.put("/{consultation_id}/classify")

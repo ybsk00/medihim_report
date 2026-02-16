@@ -241,6 +241,11 @@ export const consultationAPI = {
       method: "POST",
       body: JSON.stringify({ consultation_ids: ids }),
     }),
+  update: (id: string, data: { customer_name?: string; customer_email?: string; customer_line_id?: string; customer_id?: string }) =>
+    fetchAPI<Consultation>(`/consultations/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
   generateReports: (ids: string[]) =>
     fetchAPI<{
       triggered: number;
@@ -280,6 +285,14 @@ export const reportAPI = {
     fetchAPI<{ id: string; status: string; email_sent_to: string; access_token: string }>(
       `/reports/${id}/send-email`,
       { method: "POST" }
+    ),
+  bulkApprove: (ids: string[]) =>
+    fetchAPI<{ approved: number; approved_ids: string[]; skipped: { id: string; reason: string }[] }>(
+      "/reports/bulk-approve",
+      {
+        method: "POST",
+        body: JSON.stringify({ report_ids: ids }),
+      }
     ),
   delete: (ids: string[]) =>
     fetchAPI<{ deleted: number; ids: string[] }>("/reports/delete", {

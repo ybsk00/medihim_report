@@ -28,6 +28,14 @@ export default function ConsultationDetailPage({
   const [lang, setLang] = useState<"ja" | "ko">("ja");
   const [ctaLevel, setCtaLevel] = useState("");
   const [ctaSaving, setCtaSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    customer_name: "",
+    customer_email: "",
+    customer_line_id: "",
+    customer_id: "",
+  });
 
   useEffect(() => {
     consultationAPI
@@ -39,6 +47,35 @@ export default function ConsultationDetailPage({
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const startEditing = () => {
+    if (!data) return;
+    setEditForm({
+      customer_name: data.customer_name || "",
+      customer_email: data.customer_email || "",
+      customer_line_id: data.customer_line_id || "",
+      customer_id: data.customer_id || "",
+    });
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+  };
+
+  const saveEditing = async () => {
+    if (!data) return;
+    setSaving(true);
+    try {
+      const updated = await consultationAPI.update(id, editForm);
+      setData({ ...data, ...updated });
+      setEditing(false);
+    } catch (err) {
+      alert(`저장 실패: ${err instanceof Error ? err.message : "알 수 없는 오류"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleCtaChange = async (newLevel: string) => {
     setCtaLevel(newLevel);
@@ -102,30 +139,91 @@ export default function ConsultationDetailPage({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 고객 정보 */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">person</span>
-              고객 정보
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">person</span>
+                고객 정보
+              </h3>
+              {!editing ? (
+                <button
+                  onClick={startEditing}
+                  className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-base">edit</span>
+                  수정
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={cancelEditing}
+                    disabled={saving}
+                    className="text-sm text-slate-500 hover:text-slate-700 font-medium px-3 py-1 rounded-lg border border-slate-200"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={saveEditing}
+                    disabled={saving}
+                    className="text-sm text-white bg-primary hover:bg-primary/90 font-medium px-3 py-1 rounded-lg flex items-center gap-1 disabled:opacity-50"
+                  >
+                    {saving && <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                    저장
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between py-2 border-b border-slate-50">
                 <span className="text-sm text-slate-500">플랫폼 ID</span>
-                <span className="text-sm font-medium text-slate-800">
-                  {data.customer_id || "—"}
-                </span>
+                {editing ? (
+                  <input
+                    type="text"
+                    value={editForm.customer_id}
+                    onChange={(e) => setEditForm({ ...editForm, customer_id: e.target.value })}
+                    className="text-sm font-medium text-slate-800 border border-slate-200 rounded px-2 py-1 w-48 text-right focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                ) : (
+                  <span className="text-sm font-medium text-slate-800">{data.customer_id || "—"}</span>
+                )}
               </div>
               <div className="flex items-center justify-between py-2 border-b border-slate-50">
                 <span className="text-sm text-slate-500">이름</span>
-                <span className="text-sm font-medium text-slate-800">{data.customer_name}</span>
+                {editing ? (
+                  <input
+                    type="text"
+                    value={editForm.customer_name}
+                    onChange={(e) => setEditForm({ ...editForm, customer_name: e.target.value })}
+                    className="text-sm font-medium text-slate-800 border border-slate-200 rounded px-2 py-1 w-48 text-right focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                ) : (
+                  <span className="text-sm font-medium text-slate-800">{data.customer_name}</span>
+                )}
               </div>
               <div className="flex items-center justify-between py-2 border-b border-slate-50">
                 <span className="text-sm text-slate-500">이메일</span>
-                <span className="text-sm font-medium text-slate-800">{data.customer_email}</span>
+                {editing ? (
+                  <input
+                    type="email"
+                    value={editForm.customer_email}
+                    onChange={(e) => setEditForm({ ...editForm, customer_email: e.target.value })}
+                    className="text-sm font-medium text-slate-800 border border-slate-200 rounded px-2 py-1 w-48 text-right focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                ) : (
+                  <span className="text-sm font-medium text-slate-800">{data.customer_email}</span>
+                )}
               </div>
               <div className="flex items-center justify-between py-2 border-b border-slate-50">
                 <span className="text-sm text-slate-500">LINE ID</span>
-                <span className="text-sm font-medium text-slate-800">
-                  {data.customer_line_id || "—"}
-                </span>
+                {editing ? (
+                  <input
+                    type="text"
+                    value={editForm.customer_line_id}
+                    onChange={(e) => setEditForm({ ...editForm, customer_line_id: e.target.value })}
+                    className="text-sm font-medium text-slate-800 border border-slate-200 rounded px-2 py-1 w-48 text-right focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                ) : (
+                  <span className="text-sm font-medium text-slate-800">{data.customer_line_id || "—"}</span>
+                )}
               </div>
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-slate-500">등록일</span>

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import List
 from pydantic import BaseModel
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from models.schemas import ReportEditRequest, ReportRegenerateRequest
+from models.schemas import ReportEditRequest, ReportRegenerateRequest, BulkApproveRequest
 
 
 class DeleteReportsRequest(BaseModel):
@@ -37,6 +37,38 @@ async def delete_reports(data: DeleteReportsRequest):
     result = db.table("reports").delete().in_("id", data.report_ids).execute()
 
     return {"deleted": len(result.data), "ids": [r["id"] for r in result.data]}
+
+
+@router.post("/bulk-approve")
+async def bulk_approve_reports(data: BulkApproveRequest):
+    """선택한 리포트 일괄 승인 (이메일 발송 없이)"""
+    if not data.report_ids:
+        raise HTTPException(status_code=400, detail="승인할 리포트 ID가 없습니다")
+
+    db = get_supabase()
+
+    approved_ids = []
+    skipped = []
+
+    for report_id in data.report_ids:
+        report = db.table("reports").select("id, status, consultation_id").eq("id", report_id).single().execute()
+        if not report.data:
+            skipped.append({"id": report_id, "reason": "리포트를 찾을 수 없습니다"})
+            continue
+
+        if report.data["status"] not in ("draft", "rejected"):
+            skipped.append({"id": report_id, "reason": f"승인 불가 상태: {report.data['status']}"})
+            continue
+
+        db.table("reports").update({"status": "approved"}).eq("id", report_id).execute()
+        db.table("consultations").update({"status": "report_approved"}).eq("id", report.data["consultation_id"]).execute()
+        approved_ids.append(report_id)
+
+    return {
+        "approved": len(approved_ids),
+        "approved_ids": approved_ids,
+        "skipped": skipped,
+    }
 
 
 @router.get("/{report_id}")
