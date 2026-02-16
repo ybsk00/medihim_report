@@ -59,18 +59,18 @@ export default function Section4Medical({ explanations, footnote }: Section4Prop
             <p className="text-sm text-text-dark leading-[1.8] mb-2">{exp.text}</p>
             {exp.citation && (
               <div className="mt-3 bg-slate-50 border-l-3 border-l-[3px] border-blue-400 rounded-r-lg p-3">
-                <p className="text-[11px] text-gray-500 mb-1">
+                <p className="text-[11px] text-gray-500">
                   {exp.citation.stat && (
                     <span className="font-semibold text-blue-600">{exp.citation.stat} — </span>
                   )}
-                  <a
-                    href={exp.citation.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:underline"
-                  >
+                  <span className="text-gray-600">
                     {exp.citation.title}
-                  </a>
+                    {(exp.citation.journal || exp.citation.year) && (
+                      <span className="text-gray-400">
+                        {" "}— {exp.citation.journal || ""}{exp.citation.year ? `(${exp.citation.year})` : ""}
+                      </span>
+                    )}
+                  </span>
                 </p>
               </div>
             )}

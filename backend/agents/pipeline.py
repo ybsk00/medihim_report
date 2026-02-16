@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -12,6 +13,8 @@ from agents.validator import validate_classification
 from agents.rag_agent import search_relevant_faq
 from agents.report_writer import write_report
 from agents.report_reviewer import review_report
+
+logger = logging.getLogger(__name__)
 
 
 async def _log_agent(
@@ -56,9 +59,11 @@ async def run_pipeline(consultation_id: str):
         # ========================================
         # Step 1: 번역 (일본어 → 한국어)
         # ========================================
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 1: Translation start")
         start = time.time()
         translated_text = await translate_to_korean(original_text)
         duration = int((time.time() - start) * 1000)
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 1: Translation done ({duration}ms)")
 
         await _log_agent(consultation_id, "translator", None, {"translated_text": translated_text[:200]}, duration, "success")
         await _update_consultation(consultation_id, {"translated_text": translated_text})
@@ -66,9 +71,11 @@ async def run_pipeline(consultation_id: str):
         # ========================================
         # Step 2: 화자 분리 + CTA 분석
         # ========================================
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 2: CTA analysis start")
         start = time.time()
         cta_result = await analyze_cta(original_text, translated_text)
         duration = int((time.time() - start) * 1000)
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 2: CTA done ({duration}ms)")
 
         await _log_agent(consultation_id, "cta_analyzer", None, cta_result, duration, "success")
         await _update_consultation(consultation_id, {
@@ -81,9 +88,11 @@ async def run_pipeline(consultation_id: str):
         # ========================================
         # Step 3: 의도 추출
         # ========================================
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 3: Intent extraction start")
         start = time.time()
         intent = await extract_intent(translated_text)
         duration = int((time.time() - start) * 1000)
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 3: Intent done ({duration}ms)")
 
         await _log_agent(consultation_id, "intent_extractor", None, intent, duration, "success")
         await _update_consultation(consultation_id, {"intent_extraction": intent})
@@ -91,18 +100,22 @@ async def run_pipeline(consultation_id: str):
         # ========================================
         # Step 4: 분류
         # ========================================
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 4: Classification start")
         start = time.time()
         classification_result = await classify_consultation(translated_text, intent)
         duration = int((time.time() - start) * 1000)
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 4: Classification done ({duration}ms)")
 
         await _log_agent(consultation_id, "classifier", None, classification_result, duration, "success")
 
         # ========================================
         # Step 5: 검증
         # ========================================
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 5: Validation start")
         start = time.time()
         validation = await validate_classification(classification_result, translated_text, intent)
         duration = int((time.time() - start) * 1000)
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 5: Validation done ({duration}ms)")
 
         final_classification = validation.get("classification", "unclassified")
         confidence = validation.get("confidence", 0.0)
@@ -126,6 +139,7 @@ async def run_pipeline(consultation_id: str):
         await _generate_report(consultation_id, original_text, translated_text, intent, final_classification, customer_name)
 
     except Exception as e:
+        logger.error(f"[Pipeline:{consultation_id[:8]}] FAILED: {str(e)}", exc_info=True)
         await _update_consultation(consultation_id, {
             "status": "report_failed",
             "error_message": str(e),
@@ -176,10 +190,12 @@ async def _generate_report(
     # ========================================
     # Step 6: RAG 검색
     # ========================================
+    logger.info(f"[Pipeline:{consultation_id[:8]}] Step 6: RAG search start")
     start = time.time()
     keywords = intent.get("keywords", [])
     rag_results = await search_relevant_faq(keywords, classification)
     duration = int((time.time() - start) * 1000)
+    logger.info(f"[Pipeline:{consultation_id[:8]}] Step 6: RAG done ({duration}ms, {len(rag_results)} results)")
 
     await _log_agent(
         consultation_id, "rag_agent", {"keywords": keywords, "category": classification},
@@ -195,28 +211,34 @@ async def _generate_report(
 
     for attempt in range(max_retries):
         # 리포트 생성
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 7: Report write attempt {attempt + 1}/{max_retries}")
         start = time.time()
         report_data = await write_report(
             original_text, translated_text, intent, classification, rag_results, customer_name,
         )
         duration = int((time.time() - start) * 1000)
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 7: Report written ({duration}ms)")
         await _log_agent(consultation_id, "report_writer", None, {"attempt": attempt + 1}, duration, "success")
 
         # 리포트 검토
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 7: Report review attempt {attempt + 1}")
         start = time.time()
         review = await review_report(report_data, rag_results)
         duration = int((time.time() - start) * 1000)
         review_count = attempt + 1
+        passed = review.get("passed", False)
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 7: Review done ({duration}ms, passed={passed})")
         await _log_agent(consultation_id, "report_reviewer", None, review, duration, "success")
 
-        if review.get("passed", False):
+        if passed:
             break
 
         # 3회차가 아니면 피드백으로 재생성 시도
         if attempt < max_retries - 1:
-            # 피드백을 원문에 추가하여 재생성
+            feedback = review.get('feedback', '')
+            logger.info(f"[Pipeline:{consultation_id[:8]}] Review failed, feedback: {feedback[:100]}")
             original_text_with_feedback = (
-                original_text + f"\n\n[レビューフィードバック: {review.get('feedback', '')}]"
+                original_text + f"\n\n[レビューフィードバック: {feedback}]"
             )
             original_text = original_text_with_feedback
 

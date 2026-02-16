@@ -1,5 +1,19 @@
+import logging
+import sys
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# 로깅 설정 (Cloud Run stdout으로 출력)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    stream=sys.stdout,
+)
+# Gemini 관련 모듈만 WARNING으로 (verbose 방지)
+logging.getLogger("google").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 from api.consultation import router as consultation_router
 from api.report import router as report_router

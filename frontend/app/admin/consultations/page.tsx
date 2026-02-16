@@ -1,8 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { consultationAPI, type Consultation } from "@/lib/api";
+
+const PROCESSING_STATUSES = new Set([
+  "processing",
+  "classification_pending",
+  "report_generating",
+]);
 
 const CLASSIFICATION_MAP: Record<string, string> = {
   plastic_surgery: "🏥 성형외과",
@@ -30,39 +36,85 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 export default function ConsultationsPage() {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pageSize = 20;
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params: Record<string, string> = {
-        page: String(page),
-        page_size: String(pageSize),
-      };
-      if (categoryFilter !== "all") params.classification = categoryFilter;
-      if (statusFilter !== "all") params.status = statusFilter;
+  // 데이터 가져오기 (silent: true면 로딩 스피너 없이)
+  const fetchData = useCallback(
+    async (silent = false) => {
+      if (!silent) setInitialLoading(true);
+      try {
+        const params: Record<string, string> = {
+          page: String(page),
+          page_size: String(pageSize),
+        };
+        if (categoryFilter !== "all") params.classification = categoryFilter;
+        if (statusFilter !== "all") params.status = statusFilter;
 
-      const result = await consultationAPI.list(params);
-      setConsultations(result.data);
-      setTotal(result.total);
-    } catch {
-      setConsultations([]);
-      setTotal(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, categoryFilter, statusFilter]);
+        const result = await consultationAPI.list(params);
+        setConsultations(result.data);
+        setTotal(result.total);
 
-  useEffect(() => {
-    fetchData();
+        // 처리 중인 건이 있는지 확인
+        const hasProcessing = result.data.some((c) =>
+          PROCESSING_STATUSES.has(c.status)
+        );
+        return hasProcessing;
+      } catch {
+        if (!silent) {
+          setConsultations([]);
+          setTotal(0);
+        }
+        return false;
+      } finally {
+        if (!silent) setInitialLoading(false);
+      }
+    },
+    [page, categoryFilter, statusFilter]
+  );
+
+  // 폴링 시작
+  const startPolling = useCallback(() => {
+    if (pollingRef.current) return;
+    setIsPolling(true);
+    pollingRef.current = setInterval(async () => {
+      const stillProcessing = await fetchData(true);
+      if (!stillProcessing) {
+        // 처리 완료 → 폴링 중지
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+        setIsPolling(false);
+      }
+    }, 5000);
   }, [fetchData]);
+
+  // 폴링 중지
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    setIsPolling(false);
+  }, []);
+
+  // 초기 로드
+  useEffect(() => {
+    fetchData(false).then((hasProcessing) => {
+      if (hasProcessing) startPolling();
+    });
+    return () => stopPolling();
+  }, [fetchData, startPolling, stopPolling]);
 
   const filtered = search
     ? consultations.filter(
@@ -73,20 +125,29 @@ export default function ConsultationsPage() {
 
   const totalPages = Math.ceil(total / pageSize) || 1;
 
-  const [deleting, setDeleting] = useState(false);
+  const processingCount = consultations.filter((c) =>
+    PROCESSING_STATUSES.has(c.status)
+  ).length;
 
   const handleDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`선택한 ${selectedIds.size}건의 상담을 삭제하시겠습니까?\n연관된 리포트와 로그도 함께 삭제됩니다.`)) return;
+    if (
+      !confirm(
+        `선택한 ${selectedIds.size}건의 상담을 삭제하시겠습니까?\n연관된 리포트와 로그도 함께 삭제됩니다.`
+      )
+    )
+      return;
 
     setDeleting(true);
     try {
       const result = await consultationAPI.delete(Array.from(selectedIds));
       alert(`${result.deleted}건이 삭제되었습니다.`);
       setSelectedIds(new Set());
-      fetchData();
+      fetchData(true);
     } catch (err) {
-      alert(`삭제 실패: ${err instanceof Error ? err.message : "알 수 없는 오류"}`);
+      alert(
+        `삭제 실패: ${err instanceof Error ? err.message : "알 수 없는 오류"}`
+      );
     } finally {
       setDeleting(false);
     }
@@ -100,7 +161,9 @@ export default function ConsultationsPage() {
 
     setGenerating(true);
     try {
-      const result = await consultationAPI.generateReports(Array.from(selectedIds));
+      const result = await consultationAPI.generateReports(
+        Array.from(selectedIds)
+      );
 
       let msg = `${result.triggered}건의 리포트 생성이 시작되었습니다.`;
       if (result.skipped.length > 0) {
@@ -109,9 +172,12 @@ export default function ConsultationsPage() {
       alert(msg);
 
       setSelectedIds(new Set());
-      fetchData();
+      await fetchData(true);
+      startPolling();
     } catch (err) {
-      alert(`리포트 생성 실패: ${err instanceof Error ? err.message : "알 수 없는 오류"}`);
+      alert(
+        `리포트 생성 실패: ${err instanceof Error ? err.message : "알 수 없는 오류"}`
+      );
     } finally {
       setGenerating(false);
     }
@@ -136,6 +202,17 @@ export default function ConsultationsPage() {
       </header>
 
       <div className="p-8 max-w-[1400px] mx-auto w-full space-y-6">
+        {/* 진행 중 배너 */}
+        {isPolling && processingCount > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center gap-3">
+            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin shrink-0"></div>
+            <p className="text-sm text-blue-700 font-medium">
+              AI 리포트 생성 중... {processingCount}건 처리 중 (5초마다 자동
+              갱신)
+            </p>
+          </div>
+        )}
+
         {/* Action Bar */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3 flex-1">
@@ -196,7 +273,9 @@ export default function ConsultationsPage() {
                   {deleting ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    <span className="material-symbols-outlined text-lg">delete</span>
+                    <span className="material-symbols-outlined text-lg">
+                      delete
+                    </span>
                   )}
                   삭제 ({selectedIds.size}건)
                 </button>
@@ -208,7 +287,9 @@ export default function ConsultationsPage() {
                   {generating ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    <span className="material-symbols-outlined text-lg">smart_toy</span>
+                    <span className="material-symbols-outlined text-lg">
+                      smart_toy
+                    </span>
                   )}
                   리포트 생성 ({selectedIds.size}건)
                 </button>
@@ -226,7 +307,7 @@ export default function ConsultationsPage() {
 
         {/* Table */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          {loading ? (
+          {initialLoading && consultations.length === 0 ? (
             <div className="flex items-center justify-center py-20">
               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
             </div>
@@ -240,10 +321,15 @@ export default function ConsultationsPage() {
                         <input
                           type="checkbox"
                           className="rounded border-slate-300"
-                          checked={filtered.length > 0 && filtered.every((c) => selectedIds.has(c.id))}
+                          checked={
+                            filtered.length > 0 &&
+                            filtered.every((c) => selectedIds.has(c.id))
+                          }
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setSelectedIds(new Set(filtered.map((c) => c.id)));
+                              setSelectedIds(
+                                new Set(filtered.map((c) => c.id))
+                              );
                             } else {
                               setSelectedIds(new Set());
                             }
@@ -260,10 +346,21 @@ export default function ConsultationsPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-sm">
                     {filtered.map((item) => {
-                      const st = STATUS_MAP[item.status] || { label: item.status, color: "text-slate-500" };
-                      const cta = item.cta_level ? CTA_MAP[item.cta_level] : null;
+                      const st = STATUS_MAP[item.status] || {
+                        label: item.status,
+                        color: "text-slate-500",
+                      };
+                      const cta = item.cta_level
+                        ? CTA_MAP[item.cta_level]
+                        : null;
+                      const isProcessing = PROCESSING_STATUSES.has(
+                        item.status
+                      );
                       return (
-                        <tr key={item.id} className="hover:bg-slate-50 transition-colors cursor-pointer">
+                        <tr
+                          key={item.id}
+                          className={`hover:bg-slate-50 transition-colors cursor-pointer ${isProcessing ? "bg-blue-50/30" : ""}`}
+                        >
                           <td className="px-6 py-4">
                             <input
                               type="checkbox"
@@ -289,29 +386,48 @@ export default function ConsultationsPage() {
                               {item.customer_name}
                             </Link>
                           </td>
-                          <td className="px-6 py-4 text-slate-500">{item.customer_email}</td>
+                          <td className="px-6 py-4 text-slate-500">
+                            {item.customer_email}
+                          </td>
                           <td className="px-6 py-4 text-slate-600">
-                            {CLASSIFICATION_MAP[item.classification || ""] || "—"}
+                            {CLASSIFICATION_MAP[item.classification || ""] ||
+                              "—"}
                           </td>
                           <td className="px-6 py-4">
                             {cta ? (
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cta.color}`}>
+                              <span
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cta.color}`}
+                              >
                                 {cta.label}
                               </span>
                             ) : (
                               <span className="text-slate-400">—</span>
                             )}
                           </td>
-                          <td className={`px-6 py-4 font-medium ${st.color}`}>{st.label}</td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`font-medium ${st.color} ${isProcessing ? "inline-flex items-center gap-1.5" : ""}`}
+                            >
+                              {isProcessing && (
+                                <span className="inline-block w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></span>
+                              )}
+                              {st.label}
+                            </span>
+                          </td>
                           <td className="px-6 py-4 text-slate-500">
-                            {new Date(item.created_at).toLocaleDateString("ko-KR")}
+                            {new Date(item.created_at).toLocaleDateString(
+                              "ko-KR"
+                            )}
                           </td>
                         </tr>
                       );
                     })}
                     {filtered.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                        <td
+                          colSpan={7}
+                          className="px-6 py-12 text-center text-slate-400"
+                        >
                           상담 데이터가 없습니다
                         </td>
                       </tr>
@@ -323,7 +439,8 @@ export default function ConsultationsPage() {
               {/* Pagination */}
               <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
                 <p className="text-sm text-slate-500">
-                  전체 {total}건 중 {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)}건 표시
+                  전체 {total}건 중 {(page - 1) * pageSize + 1}-
+                  {Math.min(page * pageSize, total)}건 표시
                 </p>
                 <div className="flex items-center gap-1">
                   <button
@@ -336,7 +453,10 @@ export default function ConsultationsPage() {
                   >
                     &lt;
                   </button>
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
+                  {Array.from(
+                    { length: Math.min(totalPages, 5) },
+                    (_, i) => i + 1
+                  ).map((p) => (
                     <button
                       key={p}
                       onClick={() => {
@@ -344,7 +464,9 @@ export default function ConsultationsPage() {
                         setSelectedIds(new Set());
                       }}
                       className={`px-3 py-1 text-sm rounded ${
-                        p === page ? "bg-primary text-white" : "text-slate-500 hover:bg-slate-100"
+                        p === page
+                          ? "bg-primary text-white"
+                          : "text-slate-500 hover:bg-slate-100"
                       }`}
                     >
                       {p}

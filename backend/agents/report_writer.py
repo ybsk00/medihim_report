@@ -1,5 +1,9 @@
+import asyncio
 import json
+import logging
 from services.gemini_client import generate_json
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_INSTRUCTION = """あなたは医療コンサルティングリポートの専門ライターです。
 日本語で丁寧かつ温かみのあるリポートを作成してください。
@@ -51,7 +55,13 @@ async def write_report(
                 paper_title = faq.get("paper_title", "")
                 pmid = faq.get("pmid", "")
                 url = faq.get("youtube_url", "")
-                pubmed_context += f"\n【PubMed論文 {pubmed_count}】\n論文タイトル: {paper_title}\nPMID: {pmid}\nURL: {url}\nQ: {faq.get('question', '')}\nA: {faq.get('answer', '')}\n施術名: {faq.get('procedure_name', '')}\n"
+                answer = faq.get("answer", "")
+                # FAQ answer에서 (출처: Journal, Year) 추출
+                import re as _re
+                journal_match = _re.search(r'\(출처:\s*(.+?),\s*(\d{4})\)', answer)
+                journal_name = journal_match.group(1) if journal_match else ""
+                pub_year = journal_match.group(2) if journal_match else ""
+                pubmed_context += f"\n【PubMed論文 {pubmed_count}】\n論文タイトル: {paper_title}\nPMID: {pmid}\nURL: {url}\n저널: {journal_name}\n발행년도: {pub_year}\nQ: {faq.get('question', '')}\nA: {answer}\n施術名: {faq.get('procedure_name', '')}\n"
             else:
                 youtube_count += 1
                 youtube_context += f"\n【医療情報 {youtube_count}】\nQ: {faq.get('question', '')}\nA: {faq.get('answer', '')}\n施術名: {faq.get('procedure_name', '')}\n"
@@ -141,7 +151,9 @@ async def write_report(
                 "citation": {{
                     "title": "PubMed論文タイトルを日本語に翻訳して記載（英語のまま使用しない。なければcitationフィールド自体を省略）",
                     "url": "https://pubmed.ncbi.nlm.nih.gov/PMID/",
-                    "stat": "引用した具体的統計（例: 満足度92.3%）"
+                    "stat": "引用した具体的統計（例: 満足度92.3%）",
+                    "journal": "ジャーナル名（上記PubMed参考資料の저널フィールドをそのまま記載。英語可）",
+                    "year": "発行年度（上記PubMed参考資料の발행년도をそのまま記載）"
                 }}
             }},
             {{
@@ -220,8 +232,19 @@ async def write_report(
 - section5のdescは必ず3文以上で記述すること
 - section6の各カテゴリのitemsは配列で、複数項目を含めること"""
 
-    result = await generate_json(prompt, SYSTEM_INSTRUCTION)
-    report = json.loads(result)
+    # JSON 파싱 재시도 (최대 2회)
+    report = None
+    for parse_attempt in range(2):
+        result = await generate_json(prompt, SYSTEM_INSTRUCTION)
+        try:
+            report = json.loads(result)
+            break
+        except json.JSONDecodeError as e:
+            logger.warning(f"[ReportWriter] JSON parse error (attempt {parse_attempt + 1}): {str(e)[:100]}")
+            if parse_attempt == 0:
+                await asyncio.sleep(3)
+            else:
+                raise ValueError(f"Report JSON parse failed after 2 attempts: {str(e)}")
 
     # ── 후처리: RAG에 없는 날조 citation 제거 ──
     valid_urls = set()

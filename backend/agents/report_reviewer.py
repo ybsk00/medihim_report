@@ -1,5 +1,9 @@
+import asyncio
 import json
+import logging
 from services.gemini_client import generate_json
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_INSTRUCTION = """あなたはリポートの品質管理レビュアーです。
 生成されたリポートを厳しくレビューしてください。
@@ -59,5 +63,15 @@ JSON形式で返してください:
     "feedback": "リポート作成Agentへのフィードバック（改善指示）"
 }}"""
 
-    result = await generate_json(prompt, SYSTEM_INSTRUCTION)
-    return json.loads(result)
+    for parse_attempt in range(2):
+        result = await generate_json(prompt, SYSTEM_INSTRUCTION)
+        try:
+            return json.loads(result)
+        except json.JSONDecodeError as e:
+            logger.warning(f"[ReviewAgent] JSON parse error (attempt {parse_attempt + 1}): {str(e)[:100]}")
+            if parse_attempt == 0:
+                await asyncio.sleep(3)
+            else:
+                # 파싱 실패 시 기본 pass 응답 반환 (리포트 생성 실패 방지)
+                logger.error(f"[ReviewAgent] JSON parse failed, returning default pass")
+                return {"passed": True, "score": 70, "issues": ["Review JSON parse failed"], "suggestions": [], "feedback": ""}

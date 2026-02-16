@@ -153,7 +153,7 @@ export default function EmailsPage() {
 
         {/* Table */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          {loading ? (
+          {loading && filteredReports.length === 0 ? (
             <div className="flex items-center justify-center py-20">
               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
             </div>

@@ -95,6 +95,8 @@ export interface ReportCitation {
   title: string;
   url: string;
   stat?: string;
+  journal?: string;
+  year?: string;
 }
 
 export interface ReportData {

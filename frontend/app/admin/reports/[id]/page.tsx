@@ -381,9 +381,14 @@ export default function ReportDetailPage({
                                 {e.citation.stat && (
                                   <span className="font-semibold text-blue-600">{e.citation.stat} — </span>
                                 )}
-                                <a href={e.citation.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                                <span className="text-gray-600">
                                   {e.citation.title}
-                                </a>
+                                  {(e.citation.journal || e.citation.year) && (
+                                    <span className="text-gray-400">
+                                      {" "}— {e.citation.journal || ""}{e.citation.year ? `(${e.citation.year})` : ""}
+                                    </span>
+                                  )}
+                                </span>
                               </p>
                             </div>
                           )}
