@@ -1,8 +1,20 @@
+import asyncio
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from typing import Optional
 from models.schemas import ConsultationCreate, ConsultationBulkCreate, ClassifyRequest, CTAUpdateRequest, GenerateReportsRequest
 from services.supabase_client import get_supabase
 from agents.pipeline import run_pipeline, resume_pipeline
+
+
+async def _run_pipelines_parallel(consultation_ids: list[str], concurrency: int = 5):
+    """파이프라인을 동시성 제한하여 병렬 실행"""
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def _run_one(cid: str):
+        async with semaphore:
+            await run_pipeline(cid)
+
+    await asyncio.gather(*[_run_one(cid) for cid in consultation_ids], return_exceptions=True)
 
 router = APIRouter(prefix="/api/consultations", tags=["consultations"])
 
@@ -82,7 +94,6 @@ async def generate_reports(data: GenerateReportsRequest, background_tasks: Backg
     for row in result.data:
         if row["status"] in valid_statuses:
             db.table("consultations").update({"status": "processing"}).eq("id", row["id"]).execute()
-            background_tasks.add_task(run_pipeline, row["id"])
             triggered_ids.append(row["id"])
         else:
             skipped.append({
@@ -90,6 +101,10 @@ async def generate_reports(data: GenerateReportsRequest, background_tasks: Backg
                 "status": row["status"],
                 "reason": "이미 처리 중이거나 완료된 상담입니다",
             })
+
+    # 병렬 실행 (최대 5건 동시)
+    if triggered_ids:
+        background_tasks.add_task(_run_pipelines_parallel, triggered_ids, 5)
 
     return {
         "triggered": len(triggered_ids),
