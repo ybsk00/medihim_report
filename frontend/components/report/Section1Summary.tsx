@@ -5,7 +5,7 @@ interface Section1Props {
 
 export default function Section1Summary({ text, points }: Section1Props) {
   return (
-    <section className="fade-in-section">
+    <section>
       <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
         <span className="w-1 h-6 bg-coral rounded-full"></span>
         OO様のための今回のご相談まとめ
