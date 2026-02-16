@@ -1,0 +1,190 @@
+"use client";
+
+import { useState, useEffect, useRef, use } from "react";
+import ReportHeader from "@/components/report/ReportHeader";
+import Section1Summary from "@/components/report/Section1Summary";
+import Section2Direction from "@/components/report/Section2Direction";
+import Section3Concerns from "@/components/report/Section3Concerns";
+import Section4Medical from "@/components/report/Section4Medical";
+import Section5Proposal from "@/components/report/Section5Proposal";
+import Section6Options from "@/components/report/Section6Options";
+import Section7Recovery from "@/components/report/Section7Recovery";
+import ReportFooter from "@/components/report/ReportFooter";
+import { publicReportAPI, type ReportData } from "@/lib/api";
+
+const sectionNames = [
+  "まとめ",
+  "方向性",
+  "懸念点",
+  "医療説明",
+  "提案",
+  "選択肢",
+  "回復",
+];
+
+export default function ConsumerReportPage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const { token } = use(params);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [report, setReport] = useState<ReportData | null>(null);
+  const [activeSection, setActiveSection] = useState(0);
+  const sectionRefs = useRef<(HTMLElement | null)[]>([]);
+
+  useEffect(() => {
+    publicReportAPI
+      .get(token)
+      .then((res) => {
+        setReport(res.report_data);
+        // 열람 추적
+        publicReportAPI.opened(token).catch(() => {});
+      })
+      .catch((err) => {
+        if (err instanceof Error && err.message.includes("404")) {
+          setError("リポートが見つかりません。URLをご確認ください。");
+        } else if (err instanceof Error && err.message.includes("410")) {
+          setError("このリポートの閲覧期限が過ぎています。");
+        } else {
+          setError("リポートを読み込めません。しばらくしてからもう一度お試しください。");
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  // Intersection Observer로 현재 섹션 감지 + fade-in 애니메이션
+  useEffect(() => {
+    if (loading || !report) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            const idx = sectionRefs.current.indexOf(
+              entry.target as HTMLElement
+            );
+            if (idx >= 0) setActiveSection(idx);
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+
+    sectionRefs.current.forEach((ref) => {
+      if (ref) observer.observe(ref);
+    });
+
+    return () => observer.disconnect();
+  }, [loading, report]);
+
+  if (loading) {
+    return (
+      <div className="mobile-container flex items-center justify-center font-[Noto_Sans_JP]">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-coral border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm text-gray-500">リポートを読み込んでいます...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !report) {
+    return (
+      <div className="mobile-container flex items-center justify-center font-[Noto_Sans_JP]">
+        <div className="text-center px-8">
+          <span className="material-symbols-outlined text-5xl text-gray-300 mb-4">
+            error_outline
+          </span>
+          <p className="text-base font-bold text-text-dark mb-2">
+            リポートを表示できません
+          </p>
+          <p className="text-sm text-gray-500">{error || "データがありません。"}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mobile-container font-[Noto_Sans_JP]">
+      {/* Dot Navigation */}
+      <nav className="dot-nav hidden sm:flex flex-col gap-2">
+        {sectionNames.map((name, i) => (
+          <button
+            key={i}
+            onClick={() =>
+              sectionRefs.current[i]?.scrollIntoView({ behavior: "smooth" })
+            }
+            className="group flex items-center gap-2"
+            title={name}
+          >
+            <span
+              className={`block w-2 h-2 rounded-full transition-all ${
+                activeSection === i
+                  ? "bg-coral w-3 h-3"
+                  : "bg-gray-300 group-hover:bg-gray-400"
+              }`}
+            ></span>
+          </button>
+        ))}
+      </nav>
+
+      {/* Header */}
+      <ReportHeader title={report.title} date={report.date} />
+
+      {/* Sections */}
+      <div className="px-5 py-8 space-y-10">
+        <div ref={(el) => { sectionRefs.current[0] = el; }}>
+          <Section1Summary
+            text={report.section1_summary.text}
+            points={report.section1_summary.points}
+          />
+        </div>
+
+        <div ref={(el) => { sectionRefs.current[1] = el; }}>
+          <Section2Direction
+            desired={report.section2_direction.desired}
+            quote={report.section2_direction.quote}
+          />
+        </div>
+
+        <div ref={(el) => { sectionRefs.current[2] = el; }}>
+          <Section3Concerns
+            points={report.section3_concerns.points}
+            supplement={report.section3_concerns.supplement}
+          />
+        </div>
+
+        <div ref={(el) => { sectionRefs.current[3] = el; }}>
+          <Section4Medical
+            explanations={report.section4_medical.explanations}
+          />
+        </div>
+
+        <div ref={(el) => { sectionRefs.current[4] = el; }}>
+          <Section5Proposal steps={report.section5_proposal.steps} />
+        </div>
+
+        <div ref={(el) => { sectionRefs.current[5] = el; }}>
+          <Section6Options
+            recommended={report.section6_options.recommended}
+            optional={report.section6_options.optional}
+            unnecessary={report.section6_options.unnecessary}
+          />
+        </div>
+
+        <div ref={(el) => { sectionRefs.current[6] = el; }}>
+          <Section7Recovery
+            info={report.section7_recovery.info}
+            closing={report.section7_recovery.closing}
+          />
+        </div>
+      </div>
+
+      {/* Footer */}
+      <ReportFooter />
+    </div>
+  );
+}

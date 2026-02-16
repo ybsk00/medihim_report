@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>메디힘 이뽀 관리자 대시보드</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3c83f6",
+                        "background-light": "#f8fafc",
+                        "background-dark": "#101722",
+                        "sidebar-navy": "#1E293B",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .active-menu { background-color: rgba(60, 131, 246, 0.2); border-left: 4px solid #3c83f6; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 overflow-hidden">
+<div class="flex h-screen w-full">
+<!-- Sidebar -->
+<aside class="w-[240px] bg-sidebar-navy flex flex-col shrink-0">
+<div class="p-6 flex items-center gap-3">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-white">medical_services</span>
+</div>
+<div>
+<h1 class="text-white text-lg font-bold leading-tight">메디힘 이뽀</h1>
+<p class="text-slate-400 text-xs">Admin Console</p>
+</div>
+</div>
+<nav class="flex-1 px-3 space-y-1 mt-4">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-white active-menu transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">대시보드</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white">chat</span>
+<span class="text-sm font-medium group-hover:text-white">상담 관리</span>
+</a>
+<a class="flex items-center justify-between px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 transition-colors group" href="#">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined group-hover:text-white">move_to_inbox</span>
+<span class="text-sm font-medium group-hover:text-white">미분류 처리</span>
+</div>
+<span class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">3</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white">assignment</span>
+<span class="text-sm font-medium group-hover:text-white">리포트 관리</span>
+</a>
+<div class="pt-4 mt-4 border-t border-slate-700">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white">settings</span>
+<span class="text-sm font-medium group-hover:text-white">설정</span>
+</a>
+</div>
+</nav>
+<div class="p-4 border-t border-slate-700">
+<div class="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white cursor-pointer">
+<span class="material-symbols-outlined">logout</span>
+<span class="text-sm font-medium">로그아웃</span>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col overflow-y-auto bg-[#F8FAFC]">
+<!-- Header -->
+<header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
+<h2 class="text-xl font-bold text-slate-800">대시보드</h2>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+</button>
+<div class="h-8 w-[1px] bg-slate-200 mx-2"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<div class="text-right hidden sm:block">
+<p class="text-sm font-semibold text-slate-700 leading-none">관리자님</p>
+<p class="text-xs text-slate-500 mt-1">최고 권한 계정</p>
+</div>
+<img class="size-9 rounded-full border border-slate-200" data-alt="Admin user profile photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSqo8ba8iB3zmRcCqdcC_P9X9teGuKmHPzVH2o2Dp6J-gsNs4jbZuxw5SILjB08u_EIOfyXD-JiJ4aDeYtPdy-xdSrknkxmzbtQWmt99SiHGZi6edfIBLu6EmVtic59-W76-cji_o9PdjS3hCImojQ7L0skejdRSC1R5bX4eOlkus03pHN91LjLb7_t8gJXUdPJSR39GfMtloNY8vC486zyXL_rUYsG0oO8Wi2h2Ngl1nQYzPrMpORQBRn1tEbcTa_7frbRzVory4"/>
+</div>
+</div>
+</header>
+<div class="p-8 max-w-[1400px] mx-auto w-full space-y-8">
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<span class="text-slate-500 text-sm font-medium">총 상담</span>
+<span class="p-2 bg-blue-50 text-blue-600 rounded-lg material-symbols-outlined">forum</span>
+</div>
+<div class="flex items-end justify-between">
+<div>
+<p class="text-3xl font-bold text-slate-800">127건</p>
+<p class="text-emerald-600 text-xs font-semibold mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">trending_up</span> +12
+                                </p>
+</div>
+</div>
+</div>
+<div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<span class="text-slate-500 text-sm font-medium">미분류 대기</span>
+<span class="p-2 bg-amber-50 text-amber-600 rounded-lg material-symbols-outlined">pending_actions</span>
+</div>
+<div class="flex items-end justify-between">
+<div>
+<p class="text-3xl font-bold text-slate-800">3건</p>
+<p class="text-amber-600 text-xs font-semibold mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">warning</span> 빠른 처리가 필요합니다
+                                </p>
+</div>
+</div>
+</div>
+<div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<span class="text-slate-500 text-sm font-medium">리포트 대기</span>
+<span class="p-2 bg-purple-50 text-purple-600 rounded-lg material-symbols-outlined">summarize</span>
+</div>
+<div class="flex items-end justify-between">
+<div>
+<p class="text-3xl font-bold text-slate-800">5건</p>
+<p class="text-slate-400 text-xs mt-1">검토 대기 중</p>
+</div>
+</div>
+</div>
+<div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<span class="text-slate-500 text-sm font-medium">발송 완료</span>
+<span class="p-2 bg-emerald-50 text-emerald-600 rounded-lg material-symbols-outlined">send</span>
+</div>
+<div class="flex items-end justify-between">
+<div>
+<p class="text-3xl font-bold text-slate-800">119건</p>
+<p class="text-primary text-xs font-semibold mt-1">열람률 85%</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Analysis and Visualizations -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- CTA Analysis Card -->
+<div class="lg:col-span-1 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+<h3 class="text-lg font-bold text-slate-800 mb-6">CTA 분석 현황</h3>
+<div class="space-y-6">
+<div>
+<div class="flex justify-between items-center mb-2">
+<span class="text-sm font-medium text-slate-600">전체 리드 분류</span>
+<span class="text-sm font-bold text-slate-800">127건</span>
+</div>
+<div class="w-full h-10 bg-slate-100 rounded-lg overflow-hidden flex">
+<div class="h-full bg-red-500" style="width: 18.1%;" title="Hot: 18.1%"></div>
+<div class="h-full bg-amber-400" style="width: 52.8%;" title="Warm: 52.8%"></div>
+<div class="h-full bg-blue-400" style="width: 29.1%;" title="Cool: 29.1%"></div>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-4">
+<div class="flex items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50/50">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-red-500"></div>
+<span class="text-sm text-slate-600">Hot (적극적)</span>
+</div>
+<div class="text-right">
+<p class="text-sm font-bold">23건</p>
+<p class="text-[10px] text-slate-400">18.1%</p>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50/50">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-amber-400"></div>
+<span class="text-sm text-slate-600">Warm (관심)</span>
+</div>
+<div class="text-right">
+<p class="text-sm font-bold">67건</p>
+<p class="text-[10px] text-slate-400">52.8%</p>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50/50">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-blue-400"></div>
+<span class="text-sm text-slate-600">Cool (잠재)</span>
+</div>
+<div class="text-right">
+<p class="text-sm font-bold">37건</p>
+<p class="text-[10px] text-slate-400">29.1%</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Table -->
+<div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+<div class="p-6 border-b border-slate-100 flex items-center justify-between">
+<h3 class="text-lg font-bold text-slate-800">최근 상담 목록</h3>
+<button class="text-primary text-sm font-semibold hover:underline">전체보기</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+<tr>
+<th class="px-6 py-3 border-b">고객명</th>
+<th class="px-6 py-3 border-b">분류</th>
+<th class="px-6 py-3 border-b">CTA 상태</th>
+<th class="px-6 py-3 border-b">리포트 상태</th>
+<th class="px-6 py-3 border-b">등록일</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 text-sm">
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-slate-900">田中 陽子</td>
+<td class="px-6 py-4 text-slate-600">임플란트</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Hot</span>
+</td>
+<td class="px-6 py-4 text-emerald-600 font-medium">발송 완료</td>
+<td class="px-6 py-4 text-slate-500">2024.05.21</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-slate-900">佐藤 健太</td>
+<td class="px-6 py-4 text-slate-600">치아교정</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Warm</span>
+</td>
+<td class="px-6 py-4 text-amber-600 font-medium">리포트 대기</td>
+<td class="px-6 py-4 text-slate-500">2024.05.21</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-slate-900">鈴木 恵</td>
+<td class="px-6 py-4 text-slate-600">미분류</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">Cool</span>
+</td>
+<td class="px-6 py-4 text-slate-400">미작성</td>
+<td class="px-6 py-4 text-slate-500">2024.05.20</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-slate-900">高橋 直樹</td>
+<td class="px-6 py-4 text-slate-600">미백</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Hot</span>
+</td>
+<td class="px-6 py-4 text-emerald-600 font-medium">발송 완료</td>
+<td class="px-6 py-4 text-slate-500">2024.05.20</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-slate-900">伊藤 詩織</td>
+<td class="px-6 py-4 text-slate-600">정기검진</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">Cool</span>
+</td>
+<td class="px-6 py-4 text-emerald-600 font-medium">발송 완료</td>
+<td class="px-6 py-4 text-slate-500">2024.05.20</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-slate-900">渡辺 裕太</td>
+<td class="px-6 py-4 text-slate-600">라미네이트</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Warm</span>
+</td>
+<td class="px-6 py-4 text-emerald-600 font-medium">발송 완료</td>
+<td class="px-6 py-4 text-slate-500">2024.05.19</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-slate-900">山本 まりこ</td>
+<td class="px-6 py-4 text-slate-600">미분류</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Warm</span>
+</td>
+<td class="px-6 py-4 text-amber-600 font-medium">리포트 대기</td>
+<td class="px-6 py-4 text-slate-500">2024.05.19</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-slate-900">中村 拓也</td>
+<td class="px-6 py-4 text-slate-600">충치치료</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">Cool</span>
+</td>
+<td class="px-6 py-4 text-emerald-600 font-medium">발송 완료</td>
+<td class="px-6 py-4 text-slate-500">2024.05.19</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-slate-900">小林 真一</td>
+<td class="px-6 py-4 text-slate-600">임플란트</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Hot</span>
+</td>
+<td class="px-6 py-4 text-emerald-600 font-medium">발송 완료</td>
+<td class="px-6 py-4 text-slate-500">2024.05.18</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-slate-900">加藤 亜衣</td>
+<td class="px-6 py-4 text-slate-600">치정렬</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Warm</span>
+</td>
+<td class="px-6 py-4 text-emerald-600 font-medium">발송 완료</td>
+<td class="px-6 py-4 text-slate-500">2024.05.18</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<footer class="mt-auto py-6 px-8 text-center text-slate-400 text-xs border-t border-slate-200 bg-white">
+                © 2024 Medihim Ippo. All rights reserved.
+            </footer>
+</main>
+</div>
+</body></html>
