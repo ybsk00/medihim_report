@@ -73,6 +73,25 @@ export default function ConsultationsPage() {
 
   const totalPages = Math.ceil(total / pageSize) || 1;
 
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`선택한 ${selectedIds.size}건의 상담을 삭제하시겠습니까?\n연관된 리포트와 로그도 함께 삭제됩니다.`)) return;
+
+    setDeleting(true);
+    try {
+      const result = await consultationAPI.delete(Array.from(selectedIds));
+      alert(`${result.deleted}건이 삭제되었습니다.`);
+      setSelectedIds(new Set());
+      fetchData();
+    } catch (err) {
+      alert(`삭제 실패: ${err instanceof Error ? err.message : "알 수 없는 오류"}`);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleGenerateReports = async () => {
     if (selectedIds.size === 0) return;
 
@@ -168,18 +187,32 @@ export default function ConsultationsPage() {
           </div>
           <div className="flex items-center gap-3">
             {selectedIds.size > 0 && (
-              <button
-                onClick={handleGenerateReports}
-                disabled={generating}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-              >
-                {generating ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <span className="material-symbols-outlined text-lg">smart_toy</span>
-                )}
-                리포트 생성 ({selectedIds.size}건)
-              </button>
+              <>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {deleting ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <span className="material-symbols-outlined text-lg">delete</span>
+                  )}
+                  삭제 ({selectedIds.size}건)
+                </button>
+                <button
+                  onClick={handleGenerateReports}
+                  disabled={generating}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {generating ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <span className="material-symbols-outlined text-lg">smart_toy</span>
+                  )}
+                  리포트 생성 ({selectedIds.size}건)
+                </button>
+              </>
             )}
             <Link
               href="/admin/consultations/new"

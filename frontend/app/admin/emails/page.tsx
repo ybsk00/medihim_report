@@ -20,6 +20,8 @@ export default function EmailsPage() {
   const [loading, setLoading] = useState(true);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "approved" | "sent">("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -73,6 +75,23 @@ export default function EmailsPage() {
     alert("링크가 복사되었습니다.");
   };
 
+  const handleDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`선택한 ${selectedIds.size}건의 리포트를 삭제하시겠습니까?`)) return;
+
+    setDeleting(true);
+    try {
+      const result = await reportAPI.delete(Array.from(selectedIds));
+      alert(`${result.deleted}건이 삭제되었습니다.`);
+      setSelectedIds(new Set());
+      fetchData();
+    } catch (err) {
+      alert(`삭제 실패: ${err instanceof Error ? err.message : "알 수 없는 오류"}`);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const filteredReports = reports.filter((r) => {
     if (filter === "all") return true;
     return r.status === filter;
@@ -87,6 +106,20 @@ export default function EmailsPage() {
             {reports.filter((r) => r.status === "approved").length}건 발송 대기
           </span>
         </div>
+        {selectedIds.size > 0 && (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
+            {deleting ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <span className="material-symbols-outlined text-lg">delete</span>
+            )}
+            삭제 ({selectedIds.size}건)
+          </button>
+        )}
       </header>
 
       <div className="p-8 max-w-[1200px] mx-auto w-full space-y-6">
@@ -140,6 +173,20 @@ export default function EmailsPage() {
               <table className="w-full text-left">
                 <thead className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider">
                   <tr>
+                    <th className="px-6 py-3 border-b w-10">
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-300"
+                        checked={filteredReports.length > 0 && filteredReports.every((r) => selectedIds.has(r.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedIds(new Set(filteredReports.map((r) => r.id)));
+                          } else {
+                            setSelectedIds(new Set());
+                          }
+                        }}
+                      />
+                    </th>
                     <th className="px-6 py-3 border-b">고객명</th>
                     <th className="px-6 py-3 border-b">이메일</th>
                     <th className="px-6 py-3 border-b">분류</th>
@@ -161,6 +208,22 @@ export default function EmailsPage() {
                         key={report.id}
                         className="hover:bg-slate-50 transition-colors"
                       >
+                        <td className="px-6 py-4">
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300"
+                            checked={selectedIds.has(report.id)}
+                            onChange={(e) => {
+                              const next = new Set(selectedIds);
+                              if (e.target.checked) {
+                                next.add(report.id);
+                              } else {
+                                next.delete(report.id);
+                              }
+                              setSelectedIds(next);
+                            }}
+                          />
+                        </td>
                         <td className="px-6 py-4 font-medium text-slate-800">
                           <Link
                             href={`/admin/reports/${report.id}`}

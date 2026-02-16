@@ -1,6 +1,12 @@
 from datetime import datetime, timezone
+from typing import List
+from pydantic import BaseModel
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from models.schemas import ReportEditRequest, ReportRegenerateRequest
+
+
+class DeleteReportsRequest(BaseModel):
+    report_ids: List[str]
 from services.supabase_client import get_supabase
 from services.email_service import send_report_email
 from agents.korean_translator import translate_report_to_korean
@@ -19,6 +25,18 @@ async def list_reports():
         .execute()
     )
     return {"data": result.data}
+
+
+@router.post("/delete")
+async def delete_reports(data: DeleteReportsRequest):
+    """선택한 리포트 삭제"""
+    if not data.report_ids:
+        raise HTTPException(status_code=400, detail="삭제할 리포트 ID가 없습니다")
+
+    db = get_supabase()
+    result = db.table("reports").delete().in_("id", data.report_ids).execute()
+
+    return {"deleted": len(result.data), "ids": [r["id"] for r in result.data]}
 
 
 @router.get("/{report_id}")

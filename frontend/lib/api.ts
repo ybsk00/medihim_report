@@ -234,6 +234,11 @@ export const consultationAPI = {
       method: "PUT",
       body: JSON.stringify({ cta_level: ctaLevel }),
     }),
+  delete: (ids: string[]) =>
+    fetchAPI<{ deleted: number; ids: string[] }>("/consultations/delete", {
+      method: "POST",
+      body: JSON.stringify({ consultation_ids: ids }),
+    }),
   generateReports: (ids: string[]) =>
     fetchAPI<{
       triggered: number;
@@ -274,6 +279,11 @@ export const reportAPI = {
       `/reports/${id}/send-email`,
       { method: "POST" }
     ),
+  delete: (ids: string[]) =>
+    fetchAPI<{ deleted: number; ids: string[] }>("/reports/delete", {
+      method: "POST",
+      body: JSON.stringify({ report_ids: ids }),
+    }),
   regenerate: (id: string, direction: string) =>
     fetchAPI<{ id: string; status: string; message: string }>(
       `/reports/${id}/regenerate`,

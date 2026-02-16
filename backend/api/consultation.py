@@ -173,6 +173,28 @@ async def classify_consultation(
     return {"id": consultation_id, "status": "report_generating"}
 
 
+@router.post("/delete")
+async def delete_consultations_post(data: GenerateReportsRequest):
+    """선택한 상담 삭제 (POST로 body 전달)"""
+    if not data.consultation_ids:
+        raise HTTPException(status_code=400, detail="삭제할 상담 ID가 없습니다")
+
+    db = get_supabase()
+
+    # agent_logs 먼저 삭제 (FK)
+    for cid in data.consultation_ids:
+        db.table("agent_logs").delete().eq("consultation_id", cid).execute()
+
+    # reports 삭제 (CASCADE로 자동 처리되지만 명시적으로)
+    for cid in data.consultation_ids:
+        db.table("reports").delete().eq("consultation_id", cid).execute()
+
+    # consultations 삭제
+    result = db.table("consultations").delete().in_("id", data.consultation_ids).execute()
+
+    return {"deleted": len(result.data), "ids": [r["id"] for r in result.data]}
+
+
 @router.put("/{consultation_id}/cta")
 async def update_cta(consultation_id: str, data: CTAUpdateRequest):
     db = get_supabase()
