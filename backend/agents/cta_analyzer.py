@@ -39,4 +39,7 @@ JSON形式で返してください:
 {translated_text}"""
 
     result = await generate_json(prompt, SYSTEM_INSTRUCTION)
-    return json.loads(result)
+    data = json.loads(result)
+    if isinstance(data, list):
+        data = data[0] if data else {}
+    return data

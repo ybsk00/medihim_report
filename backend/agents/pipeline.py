@@ -157,6 +157,8 @@ async def resume_pipeline(consultation_id: str, classification: str):
     original_text = consultation["original_text"]
     translated_text = consultation["translated_text"]
     intent = consultation["intent_extraction"]
+    if isinstance(intent, list):
+        intent = intent[0] if intent else {}
     customer_name = consultation["customer_name"]
 
     # 수동 분류 업데이트
@@ -284,6 +286,8 @@ async def regenerate_report(report_id: str, direction: str):
     original_text = consultation["original_text"]
     translated_text = consultation["translated_text"]
     intent = consultation["intent_extraction"]
+    if isinstance(intent, list):
+        intent = intent[0] if intent else {}
     classification = consultation["classification"]
     customer_name = consultation["customer_name"]
 

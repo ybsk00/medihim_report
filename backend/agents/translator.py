@@ -21,4 +21,6 @@ JSON形式で返してください:
 
     result = await generate_json(prompt, SYSTEM_INSTRUCTION)
     data = json.loads(result)
+    if isinstance(data, list):
+        data = data[0] if data else {}
     return data.get("translated_text", "")

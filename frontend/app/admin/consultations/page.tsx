@@ -159,11 +159,22 @@ export default function ConsultationsPage() {
     const confirmMsg = `선택한 ${selectedIds.size}건의 상담에 대해 AI 리포트를 생성하시겠습니까?`;
     if (!confirm(confirmMsg)) return;
 
+    // Optimistic UI: 즉시 선택된 행의 상태를 "processing"으로 변경
+    setConsultations((prev) =>
+      prev.map((c) =>
+        selectedIds.has(c.id) &&
+        (c.status === "registered" || c.status === "report_failed")
+          ? { ...c, status: "processing" }
+          : c
+      )
+    );
+    const idsToGenerate = Array.from(selectedIds);
+    setSelectedIds(new Set());
     setGenerating(true);
+    startPolling();
+
     try {
-      const result = await consultationAPI.generateReports(
-        Array.from(selectedIds)
-      );
+      const result = await consultationAPI.generateReports(idsToGenerate);
 
       let msg = `${result.triggered}건의 리포트 생성이 시작되었습니다.`;
       if (result.skipped.length > 0) {
@@ -171,13 +182,13 @@ export default function ConsultationsPage() {
       }
       alert(msg);
 
-      setSelectedIds(new Set());
       await fetchData(true);
-      startPolling();
     } catch (err) {
       alert(
         `리포트 생성 실패: ${err instanceof Error ? err.message : "알 수 없는 오류"}`
       );
+      // 실패 시 원래 상태로 복구
+      await fetchData(true);
     } finally {
       setGenerating(false);
     }

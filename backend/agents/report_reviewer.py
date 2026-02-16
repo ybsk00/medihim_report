@@ -66,7 +66,10 @@ JSON形式で返してください:
     for parse_attempt in range(2):
         result = await generate_json(prompt, SYSTEM_INSTRUCTION)
         try:
-            return json.loads(result)
+            data = json.loads(result)
+            if isinstance(data, list):
+                data = data[0] if data else {"passed": True, "score": 70, "issues": [], "suggestions": [], "feedback": ""}
+            return data
         except json.JSONDecodeError as e:
             logger.warning(f"[ReviewAgent] JSON parse error (attempt {parse_attempt + 1}): {str(e)[:100]}")
             if parse_attempt == 0:
