@@ -40,10 +40,10 @@ class ReportStatus(str, Enum):
 # Request Models
 # ============================================
 class ConsultationCreate(BaseModel):
-    customer_id: str
-    customer_name: str
-    customer_email: str
-    customer_line_id: str
+    customer_id: Optional[str] = ""
+    customer_name: Optional[str] = ""
+    customer_email: Optional[str] = ""
+    customer_line_id: Optional[str] = ""
     original_text: str
 
 

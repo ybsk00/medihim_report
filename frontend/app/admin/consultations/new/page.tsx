@@ -13,21 +13,28 @@ interface CsvRow {
   original_text: string;
 }
 
-interface CsvError {
+interface CsvMessage {
   row: number;
   message: string;
+  type: "error" | "warning";
 }
 
-function parseCsvLine(line: string): string[] {
-  const fields: string[] = [];
+/**
+ * RFC 4180 준수 CSV 파서: 멀티라인 쌍따옴표 필드 지원
+ * 전체 텍스트를 받아 행 배열(각 행은 필드 배열)을 반환
+ */
+function parseCsvFull(text: string): string[][] {
+  const rows: string[][] = [];
   let current = "";
   let inQuotes = false;
+  let fields: string[] = [];
 
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+
     if (inQuotes) {
       if (ch === '"') {
-        if (i + 1 < line.length && line[i + 1] === '"') {
+        if (i + 1 < text.length && text[i + 1] === '"') {
           current += '"';
           i++;
         } else {
@@ -40,18 +47,32 @@ function parseCsvLine(line: string): string[] {
       if (ch === '"') {
         inQuotes = true;
       } else if (ch === ",") {
-        fields.push(current.trim());
+        fields.push(current);
         current = "";
+      } else if (ch === "\r") {
+        // skip \r
+      } else if (ch === "\n") {
+        fields.push(current);
+        current = "";
+        if (fields.some((f) => f.trim())) {
+          rows.push(fields);
+        }
+        fields = [];
       } else {
         current += ch;
       }
     }
   }
-  fields.push(current.trim());
-  return fields;
+  // 마지막 행 처리
+  fields.push(current);
+  if (fields.some((f) => f.trim())) {
+    rows.push(fields);
+  }
+  return rows;
 }
 
-const REQUIRED_COLUMNS = ["customer_id", "customer_name", "customer_email", "customer_line_id", "original_text"];
+const ALL_COLUMNS = ["customer_id", "customer_name", "customer_email", "customer_line_id", "original_text"];
+const REQUIRED_COLUMNS = ["original_text"]; // 다이얼로그만 필수
 
 export default function NewConsultationPage() {
   const router = useRouter();
@@ -69,7 +90,7 @@ export default function NewConsultationPage() {
 
   // CSV 관련 상태
   const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
-  const [csvErrors, setCsvErrors] = useState<CsvError[]>([]);
+  const [csvErrors, setCsvMessages] = useState<CsvMessage[]>([]);
   const [csvFileName, setCsvFileName] = useState("");
   const csvInputRef = useRef<HTMLInputElement>(null);
 
@@ -83,53 +104,72 @@ export default function NewConsultationPage() {
     reader.readAsText(file);
   };
 
+  // CSV 경고 상태
+  const [csvWarnings, setCsvWarnings] = useState<CsvMessage[]>([]);
+
   const handleCsvParse = (text: string, name: string) => {
     setCsvFileName(name);
-    const lines = text.split(/\r?\n/).filter((l) => l.trim());
-    if (lines.length < 2) {
-      setCsvErrors([{ row: 0, message: "CSV 파일에 헤더와 데이터가 필요합니다" }]);
+
+    const parsed = parseCsvFull(text);
+    if (parsed.length < 2) {
+      setCsvMessages([{ row: 0, message: "CSV 파일에 헤더와 데이터가 필요합니다", type: "error" }]);
       setCsvRows([]);
+      setCsvWarnings([]);
       return;
     }
 
-    const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase().replace(/\ufeff/, ""));
-    const missingCols = REQUIRED_COLUMNS.filter((c) => !headers.includes(c));
-    if (missingCols.length > 0) {
-      setCsvErrors([{ row: 0, message: `필수 컬럼 누락: ${missingCols.join(", ")}` }]);
+    const headers = parsed[0].map((h) => h.trim().toLowerCase().replace(/\ufeff/, ""));
+
+    // original_text 컬럼 필수 확인
+    if (!headers.includes("original_text")) {
+      setCsvMessages([{ row: 0, message: "필수 컬럼 누락: original_text (상담 다이얼로그)", type: "error" }]);
       setCsvRows([]);
+      setCsvWarnings([]);
       return;
     }
 
-    const colIndices = Object.fromEntries(REQUIRED_COLUMNS.map((c) => [c, headers.indexOf(c)]));
+    const colIndices = Object.fromEntries(ALL_COLUMNS.map((c) => [c, headers.indexOf(c)]));
     const rows: CsvRow[] = [];
-    const errors: CsvError[] = [];
+    const errors: CsvMessage[] = [];
+    const warnings: CsvMessage[] = [];
 
-    for (let i = 1; i < lines.length; i++) {
-      const fields = parseCsvLine(lines[i]);
-      const row: CsvRow = {
-        customer_id: fields[colIndices.customer_id] || "",
-        customer_name: fields[colIndices.customer_name] || "",
-        customer_email: fields[colIndices.customer_email] || "",
-        customer_line_id: fields[colIndices.customer_line_id] || "",
-        original_text: fields[colIndices.original_text] || "",
+    for (let i = 1; i < parsed.length; i++) {
+      const fields = parsed[i];
+      const get = (col: string) => {
+        const idx = colIndices[col];
+        return idx >= 0 && idx < fields.length ? fields[idx].trim() : "";
       };
 
-      const missing: string[] = [];
-      if (!row.customer_id) missing.push("customer_id");
-      if (!row.customer_name) missing.push("customer_name");
-      if (!row.customer_email) missing.push("customer_email");
-      if (!row.customer_line_id) missing.push("customer_line_id");
-      if (!row.original_text) missing.push("original_text");
+      const row: CsvRow = {
+        customer_id: get("customer_id"),
+        customer_name: get("customer_name"),
+        customer_email: get("customer_email"),
+        customer_line_id: get("customer_line_id"),
+        original_text: get("original_text"),
+      };
 
-      if (missing.length > 0) {
-        errors.push({ row: i + 1, message: `빈 필드: ${missing.join(", ")}` });
-      } else {
-        rows.push(row);
+      // 필수: original_text만
+      if (!row.original_text) {
+        errors.push({ row: i + 1, message: "필수 필드 누락: original_text (상담 다이얼로그)", type: "error" });
+        continue;
       }
+
+      // 선택 필드 경고
+      const empty: string[] = [];
+      if (!row.customer_id) empty.push("customer_id");
+      if (!row.customer_name) empty.push("customer_name");
+      if (!row.customer_email) empty.push("customer_email");
+      if (!row.customer_line_id) empty.push("customer_line_id");
+      if (empty.length > 0) {
+        warnings.push({ row: i + 1, message: `선택 필드 비어있음: ${empty.join(", ")}`, type: "warning" });
+      }
+
+      rows.push(row);
     }
 
     setCsvRows(rows);
-    setCsvErrors(errors);
+    setCsvMessages(errors);
+    setCsvWarnings(warnings);
   };
 
   const handleCsvFileChange = (file: File) => {
@@ -144,8 +184,8 @@ export default function NewConsultationPage() {
   // STT 모드 제출
   const handleSttSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.customerId || !formData.customerName || !formData.customerEmail || !formData.lineId || !formData.sttText) {
-      alert("필수 항목을 모두 입력해주세요.");
+    if (!formData.sttText) {
+      alert("상담 다이얼로그를 입력해주세요.");
       return;
     }
 
@@ -240,11 +280,10 @@ export default function NewConsultationPage() {
               {/* 플랫폼 ID */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  플랫폼 ID <span className="text-red-500">*</span>
+                  플랫폼 ID
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.customerId}
                   onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
                   placeholder="메디힘 플랫폼 ID"
@@ -255,11 +294,10 @@ export default function NewConsultationPage() {
               {/* 고객명 */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  고객명 <span className="text-red-500">*</span>
+                  고객명
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.customerName}
                   onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                   placeholder="예: 田中花子"
@@ -270,11 +308,10 @@ export default function NewConsultationPage() {
               {/* 이메일 */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  이메일 <span className="text-red-500">*</span>
+                  이메일
                 </label>
                 <input
                   type="email"
-                  required
                   value={formData.customerEmail}
                   onChange={(e) => setFormData({ ...formData, customerEmail: e.target.value })}
                   placeholder="예: tanaka@email.jp"
@@ -285,11 +322,10 @@ export default function NewConsultationPage() {
               {/* LINE ID */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  LINE ID <span className="text-red-500">*</span>
+                  LINE ID
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.lineId}
                   onChange={(e) => setFormData({ ...formData, lineId: e.target.value })}
                   placeholder="예: tanaka_123"
@@ -301,7 +337,7 @@ export default function NewConsultationPage() {
             {/* STT 파일 업로드 */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-3">
-                STT 파일 <span className="text-red-500">*</span>
+                STT 파일 (상담 다이얼로그) <span className="text-red-500">*</span>
               </label>
               <div
                 className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
@@ -386,14 +422,14 @@ export default function NewConsultationPage() {
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
               <p className="text-sm font-semibold text-blue-800 mb-2">CSV 파일 형식</p>
               <p className="text-xs text-blue-700 mb-2">
-                필수 컬럼: <code className="bg-blue-100 px-1 rounded">customer_id</code>,{" "}
+                필수 컬럼: <code className="bg-red-100 text-red-700 px-1 rounded">original_text</code>{" "}
+                | 선택 컬럼: <code className="bg-blue-100 px-1 rounded">customer_id</code>,{" "}
                 <code className="bg-blue-100 px-1 rounded">customer_name</code>,{" "}
                 <code className="bg-blue-100 px-1 rounded">customer_email</code>,{" "}
-                <code className="bg-blue-100 px-1 rounded">customer_line_id</code>,{" "}
-                <code className="bg-blue-100 px-1 rounded">original_text</code>
+                <code className="bg-blue-100 px-1 rounded">customer_line_id</code>
               </p>
               <p className="text-xs text-blue-600">
-                UTF-8 인코딩, 쉼표 구분. 일본어 텍스트는 쌍따옴표로 감싸주세요. 최대 100건.
+                UTF-8 인코딩, 쉼표 구분. 멀티라인 텍스트는 쌍따옴표로 감싸주세요. 최대 100건.
               </p>
             </div>
 
@@ -468,6 +504,22 @@ export default function NewConsultationPage() {
                   {csvErrors.map((err, i) => (
                     <p key={i} className="text-xs text-red-700">
                       행 {err.row}: {err.message}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CSV 경고 표시 */}
+            {csvWarnings.length > 0 && (
+              <div className="bg-amber-50 border border-amber-100 rounded-lg p-4">
+                <p className="text-sm font-semibold text-amber-800 mb-2">
+                  경고 ({csvWarnings.length}건) — 등록은 가능합니다
+                </p>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {csvWarnings.map((w, i) => (
+                    <p key={i} className="text-xs text-amber-700">
+                      행 {w.row}: {w.message}
                     </p>
                   ))}
                 </div>
