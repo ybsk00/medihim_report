@@ -152,6 +152,7 @@ export function isV2Report(data: ReportData): boolean {
 
 export interface DashboardStats {
   total_consultations: number;
+  registered_count: number;
   unclassified_count: number;
   report_pending_count: number;
   sent_count: number;
@@ -233,6 +234,15 @@ export const consultationAPI = {
       method: "PUT",
       body: JSON.stringify({ cta_level: ctaLevel }),
     }),
+  generateReports: (ids: string[]) =>
+    fetchAPI<{
+      triggered: number;
+      triggered_ids: string[];
+      skipped: { id: string; status: string; reason: string }[];
+    }>("/consultations/generate-reports", {
+      method: "POST",
+      body: JSON.stringify({ consultation_ids: ids }),
+    }),
 };
 
 // ============================================
@@ -263,6 +273,14 @@ export const reportAPI = {
     fetchAPI<{ id: string; status: string; email_sent_to: string; access_token: string }>(
       `/reports/${id}/send-email`,
       { method: "POST" }
+    ),
+  regenerate: (id: string, direction: string) =>
+    fetchAPI<{ id: string; status: string; message: string }>(
+      `/reports/${id}/regenerate`,
+      {
+        method: "POST",
+        body: JSON.stringify({ direction }),
+      }
     ),
 };
 

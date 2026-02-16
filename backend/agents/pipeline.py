@@ -241,3 +241,110 @@ async def _generate_report(
     ).execute()
 
     await _update_consultation(consultation_id, {"status": "report_ready"})
+
+
+async def regenerate_report(report_id: str, direction: str):
+    """관리자 피드백 기반 리포트 재생성"""
+    db = get_supabase()
+
+    # 1. 기존 리포트 + 상담 데이터 조회
+    report_result = db.table("reports").select("*").eq("id", report_id).single().execute()
+    report = report_result.data
+    if not report:
+        raise ValueError(f"Report {report_id} not found")
+
+    consultation_id = report["consultation_id"]
+    consultation_result = db.table("consultations").select("*").eq("id", consultation_id).single().execute()
+    consultation = consultation_result.data
+    if not consultation:
+        raise ValueError(f"Consultation {consultation_id} not found")
+
+    original_text = consultation["original_text"]
+    translated_text = consultation["translated_text"]
+    intent = consultation["intent_extraction"]
+    classification = consultation["classification"]
+    customer_name = consultation["customer_name"]
+
+    await _update_consultation(consultation_id, {"status": "report_generating"})
+
+    try:
+        # 2. RAG 재검색: 기존 키워드 + 관리자 방향에서 추출한 키워드
+        existing_keywords = intent.get("keywords", []) if intent else []
+        direction_keywords = direction.split()
+        combined_keywords = list(set(existing_keywords + direction_keywords))
+
+        start = time.time()
+        rag_results = await search_relevant_faq(combined_keywords, classification)
+        duration = int((time.time() - start) * 1000)
+
+        await _log_agent(
+            consultation_id, "rag_agent_regen",
+            {"keywords": combined_keywords, "direction": direction},
+            {"result_count": len(rag_results)},
+            duration, "success",
+        )
+
+        # 3. 리포트 작성 + 검토 루프 (최대 3회)
+        report_data = None
+        review_count = 0
+        max_retries = 3
+
+        for attempt in range(max_retries):
+            start = time.time()
+            report_data = await write_report(
+                original_text, translated_text, intent, classification,
+                rag_results, customer_name,
+                admin_direction=direction,
+            )
+            duration = int((time.time() - start) * 1000)
+            await _log_agent(
+                consultation_id, "report_writer_regen",
+                None, {"attempt": attempt + 1, "direction": direction[:100]},
+                duration, "success",
+            )
+
+            start = time.time()
+            review = await review_report(report_data, rag_results)
+            duration = int((time.time() - start) * 1000)
+            review_count = attempt + 1
+            await _log_agent(
+                consultation_id, "report_reviewer_regen",
+                None, review, duration, "success",
+            )
+
+            if review.get("passed", False):
+                break
+
+            if attempt < max_retries - 1:
+                original_text = (
+                    original_text + f"\n\n[レビューフィードバック: {review.get('feedback', '')}]"
+                )
+
+        # 4. 기존 리포트 레코드 업데이트 (overwrite)
+        access_token = report.get("access_token") or uuid.uuid4().hex
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(days=30)
+
+        db.table("reports").update({
+            "report_data": report_data,
+            "report_data_ko": None,  # 한국어 캐시 초기화
+            "rag_context": rag_results,
+            "review_count": review_count,
+            "review_passed": review_count <= max_retries,
+            "access_token": access_token,
+            "access_expires_at": expires_at.isoformat(),
+            "status": "draft",
+        }).eq("id", report_id).execute()
+
+        await _update_consultation(consultation_id, {"status": "report_ready"})
+
+    except Exception as e:
+        await _update_consultation(consultation_id, {
+            "status": "report_failed",
+            "error_message": f"재생성 실패: {str(e)}",
+        })
+        db.table("reports").update({
+            "status": "rejected",
+            "review_notes": f"재생성 실패: {str(e)}",
+        }).eq("id", report_id).execute()
+        await _log_agent(consultation_id, "pipeline_regen", None, None, 0, "failed", str(e))

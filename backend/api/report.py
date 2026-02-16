@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
-from models.schemas import ReportEditRequest
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+from models.schemas import ReportEditRequest, ReportRegenerateRequest
 from services.supabase_client import get_supabase
 from services.email_service import send_report_email
 from agents.korean_translator import translate_report_to_korean
+from agents.pipeline import regenerate_report
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
@@ -132,6 +133,51 @@ async def reject_report(report_id: str):
         raise HTTPException(status_code=404, detail="Report not found")
 
     return {"id": report_id, "status": "rejected"}
+
+
+@router.post("/{report_id}/regenerate")
+async def regenerate_report_endpoint(
+    report_id: str,
+    data: ReportRegenerateRequest,
+    background_tasks: BackgroundTasks,
+):
+    """관리자 피드백 기반 리포트 재생성"""
+    db = get_supabase()
+
+    report = (
+        db.table("reports")
+        .select("id, status, consultation_id")
+        .eq("id", report_id)
+        .single()
+        .execute()
+    )
+
+    if not report.data:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    allowed_statuses = {"draft", "rejected", "approved"}
+    if report.data["status"] not in allowed_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"이 상태({report.data['status']})에서는 재생성할 수 없습니다",
+        )
+
+    if not data.direction or not data.direction.strip():
+        raise HTTPException(status_code=400, detail="재생성 방향을 입력해주세요")
+
+    # 상태를 재생성 중으로 변경
+    db.table("reports").update({"status": "draft"}).eq("id", report_id).execute()
+    db.table("consultations").update(
+        {"status": "report_generating"}
+    ).eq("id", report.data["consultation_id"]).execute()
+
+    background_tasks.add_task(regenerate_report, report_id, data.direction.strip())
+
+    return {
+        "id": report_id,
+        "status": "regenerating",
+        "message": "리포트 재생성이 시작되었습니다",
+    }
 
 
 @router.put("/{report_id}/edit")

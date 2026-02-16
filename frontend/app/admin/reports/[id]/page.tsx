@@ -18,6 +18,9 @@ export default function ReportDetailPage({
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showRegenModal, setShowRegenModal] = useState(false);
+  const [regenDirection, setRegenDirection] = useState("");
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     reportAPI
@@ -99,6 +102,28 @@ export default function ReportDetailPage({
       "_blank"
     );
     setShowShare(false);
+  };
+
+  const handleRegenerate = async () => {
+    if (!report || !regenDirection.trim()) return;
+    setRegenerating(true);
+    try {
+      await reportAPI.regenerate(id, regenDirection.trim());
+      alert("리포트 재생성이 시작되었습니다. 잠시 후 페이지를 새로고침해주세요.");
+      setShowRegenModal(false);
+      setRegenDirection("");
+      // 3초 후 자동 리로드
+      setTimeout(() => {
+        reportAPI
+          .get(id)
+          .then((r) => setReport(r))
+          .catch(() => {});
+      }, 3000);
+    } catch (err) {
+      alert(`재생성 실패: ${err instanceof Error ? err.message : "알 수 없는 오류"}`);
+    } finally {
+      setRegenerating(false);
+    }
   };
 
   if (loading) {
@@ -520,6 +545,13 @@ export default function ReportDetailPage({
               반려
             </button>
             <button
+              onClick={() => setShowRegenModal(true)}
+              className="px-6 py-2.5 bg-amber-500 text-white rounded-lg text-sm font-semibold hover:bg-amber-600 transition-colors flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-lg">refresh</span>
+              재생성
+            </button>
+            <button
               onClick={handleApprove}
               disabled={approving}
               className="px-6 py-2.5 bg-emerald-500 text-white rounded-lg text-sm font-semibold hover:bg-emerald-600 transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -620,10 +652,68 @@ export default function ReportDetailPage({
 
         {/* Rejected Info */}
         {report.status === "rejected" && (
-          <div className="bg-white rounded-xl border border-red-200 shadow-sm p-6">
+          <div className="bg-white rounded-xl border border-red-200 shadow-sm p-6 space-y-4">
             <div className="flex items-center gap-2 text-red-600">
               <span className="material-symbols-outlined">cancel</span>
               <span className="text-sm font-semibold">반려된 리포트입니다</span>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowRegenModal(true)}
+                className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold hover:bg-amber-600 transition-colors flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-lg">refresh</span>
+                피드백으로 재생성
+              </button>
+              <button
+                onClick={handleApprove}
+                disabled={approving}
+                className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-semibold hover:bg-emerald-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-lg">check</span>
+                이대로 승인
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Regeneration Modal */}
+        {showRegenModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg mx-4">
+              <h3 className="text-lg font-bold text-slate-800 mb-2">리포트 재생성</h3>
+              <p className="text-sm text-slate-500 mb-4">
+                원하는 수정 방향을 한국어로 입력해주세요. AI가 이 피드백을 반영하여 리포트를 다시 생성합니다.
+              </p>
+              <textarea
+                value={regenDirection}
+                onChange={(e) => setRegenDirection(e.target.value)}
+                placeholder="예: 코 재수술 부분을 더 자세하게 설명하고, 회복기간을 강조해주세요"
+                className="w-full h-32 border border-slate-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+              <div className="flex justify-end gap-3 mt-4">
+                <button
+                  onClick={() => {
+                    setShowRegenModal(false);
+                    setRegenDirection("");
+                  }}
+                  className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleRegenerate}
+                  disabled={regenerating || !regenDirection.trim()}
+                  className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {regenerating ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <span className="material-symbols-outlined text-lg">smart_toy</span>
+                  )}
+                  재생성 시작
+                </button>
+              </div>
             </div>
           </div>
         )}

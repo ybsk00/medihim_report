@@ -17,6 +17,7 @@ const CTA_MAP: Record<string, { label: string; color: string }> = {
 };
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
+  registered: { label: "등록 완료", color: "text-slate-600" },
   processing: { label: "AI 분석 중", color: "text-blue-500" },
   classification_pending: { label: "분류 대기", color: "text-amber-500" },
   report_generating: { label: "리포트 생성 중", color: "text-blue-500" },
@@ -34,6 +35,8 @@ export default function ConsultationsPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [generating, setGenerating] = useState(false);
   const pageSize = 20;
 
   const fetchData = useCallback(async () => {
@@ -69,6 +72,31 @@ export default function ConsultationsPage() {
     : consultations;
 
   const totalPages = Math.ceil(total / pageSize) || 1;
+
+  const handleGenerateReports = async () => {
+    if (selectedIds.size === 0) return;
+
+    const confirmMsg = `선택한 ${selectedIds.size}건의 상담에 대해 AI 리포트를 생성하시겠습니까?`;
+    if (!confirm(confirmMsg)) return;
+
+    setGenerating(true);
+    try {
+      const result = await consultationAPI.generateReports(Array.from(selectedIds));
+
+      let msg = `${result.triggered}건의 리포트 생성이 시작되었습니다.`;
+      if (result.skipped.length > 0) {
+        msg += `\n${result.skipped.length}건은 건너뛰었습니다 (이미 처리 중이거나 완료).`;
+      }
+      alert(msg);
+
+      setSelectedIds(new Set());
+      fetchData();
+    } catch (err) {
+      alert(`리포트 생성 실패: ${err instanceof Error ? err.message : "알 수 없는 오류"}`);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   return (
     <>
@@ -109,6 +137,7 @@ export default function ConsultationsPage() {
               onChange={(e) => {
                 setCategoryFilter(e.target.value);
                 setPage(1);
+                setSelectedIds(new Set());
               }}
               className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
@@ -122,10 +151,12 @@ export default function ConsultationsPage() {
               onChange={(e) => {
                 setStatusFilter(e.target.value);
                 setPage(1);
+                setSelectedIds(new Set());
               }}
               className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="all">상태 전체</option>
+              <option value="registered">등록 완료</option>
               <option value="processing">AI 분석 중</option>
               <option value="classification_pending">분류 대기</option>
               <option value="report_generating">리포트 생성 중</option>
@@ -135,13 +166,29 @@ export default function ConsultationsPage() {
               <option value="report_failed">처리 실패</option>
             </select>
           </div>
-          <Link
-            href="/admin/consultations/new"
-            className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
-          >
-            <span className="material-symbols-outlined text-lg">add</span>
-            새 상담 등록
-          </Link>
+          <div className="flex items-center gap-3">
+            {selectedIds.size > 0 && (
+              <button
+                onClick={handleGenerateReports}
+                disabled={generating}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {generating ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <span className="material-symbols-outlined text-lg">smart_toy</span>
+                )}
+                리포트 생성 ({selectedIds.size}건)
+              </button>
+            )}
+            <Link
+              href="/admin/consultations/new"
+              className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-lg">add</span>
+              새 상담 등록
+            </Link>
+          </div>
         </div>
 
         {/* Table */}
@@ -157,7 +204,18 @@ export default function ConsultationsPage() {
                   <thead className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider">
                     <tr>
                       <th className="px-6 py-3 border-b w-10">
-                        <input type="checkbox" className="rounded border-slate-300" />
+                        <input
+                          type="checkbox"
+                          className="rounded border-slate-300"
+                          checked={filtered.length > 0 && filtered.every((c) => selectedIds.has(c.id))}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedIds(new Set(filtered.map((c) => c.id)));
+                            } else {
+                              setSelectedIds(new Set());
+                            }
+                          }}
+                        />
                       </th>
                       <th className="px-6 py-3 border-b">고객명</th>
                       <th className="px-6 py-3 border-b">이메일</th>
@@ -174,7 +232,21 @@ export default function ConsultationsPage() {
                       return (
                         <tr key={item.id} className="hover:bg-slate-50 transition-colors cursor-pointer">
                           <td className="px-6 py-4">
-                            <input type="checkbox" className="rounded border-slate-300" />
+                            <input
+                              type="checkbox"
+                              className="rounded border-slate-300"
+                              checked={selectedIds.has(item.id)}
+                              onChange={(e) => {
+                                const next = new Set(selectedIds);
+                                if (e.target.checked) {
+                                  next.add(item.id);
+                                } else {
+                                  next.delete(item.id);
+                                }
+                                setSelectedIds(next);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
                           </td>
                           <td className="px-6 py-4">
                             <Link
@@ -222,7 +294,10 @@ export default function ConsultationsPage() {
                 </p>
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    onClick={() => {
+                      setPage((p) => Math.max(1, p - 1));
+                      setSelectedIds(new Set());
+                    }}
                     disabled={page <= 1}
                     className="px-3 py-1 text-sm text-slate-500 hover:bg-slate-100 rounded disabled:opacity-30"
                   >
@@ -231,7 +306,10 @@ export default function ConsultationsPage() {
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
                     <button
                       key={p}
-                      onClick={() => setPage(p)}
+                      onClick={() => {
+                        setPage(p);
+                        setSelectedIds(new Set());
+                      }}
                       className={`px-3 py-1 text-sm rounded ${
                         p === page ? "bg-primary text-white" : "text-slate-500 hover:bg-slate-100"
                       }`}
@@ -240,7 +318,10 @@ export default function ConsultationsPage() {
                     </button>
                   ))}
                   <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() => {
+                      setPage((p) => Math.min(totalPages, p + 1));
+                      setSelectedIds(new Set());
+                    }}
                     disabled={page >= totalPages}
                     className="px-3 py-1 text-sm text-slate-500 hover:bg-slate-100 rounded disabled:opacity-30"
                   >

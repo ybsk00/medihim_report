@@ -1,6 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from typing import Optional
-from models.schemas import ConsultationCreate, ConsultationBulkCreate, ClassifyRequest, CTAUpdateRequest
+from models.schemas import ConsultationCreate, ConsultationBulkCreate, ClassifyRequest, CTAUpdateRequest, GenerateReportsRequest
 from services.supabase_client import get_supabase
 from agents.pipeline import run_pipeline, resume_pipeline
 
@@ -8,7 +8,7 @@ router = APIRouter(prefix="/api/consultations", tags=["consultations"])
 
 
 @router.post("")
-async def create_consultation(data: ConsultationCreate, background_tasks: BackgroundTasks):
+async def create_consultation(data: ConsultationCreate):
     db = get_supabase()
 
     result = db.table("consultations").insert(
@@ -18,20 +18,17 @@ async def create_consultation(data: ConsultationCreate, background_tasks: Backgr
             "customer_email": data.customer_email,
             "customer_line_id": data.customer_line_id,
             "original_text": data.original_text,
-            "status": "processing",
+            "status": "registered",
         }
     ).execute()
 
     consultation = result.data[0]
 
-    # 백그라운드에서 파이프라인 실행
-    background_tasks.add_task(run_pipeline, consultation["id"])
-
-    return {"id": consultation["id"], "status": "processing"}
+    return {"id": consultation["id"], "status": "registered"}
 
 
 @router.post("/bulk")
-async def create_consultations_bulk(data: ConsultationBulkCreate, background_tasks: BackgroundTasks):
+async def create_consultations_bulk(data: ConsultationBulkCreate):
     if len(data.consultations) > 100:
         raise HTTPException(status_code=400, detail="최대 100건까지 일괄 등록 가능합니다")
 
@@ -46,19 +43,59 @@ async def create_consultations_bulk(data: ConsultationBulkCreate, background_tas
             "customer_email": c.customer_email,
             "customer_line_id": c.customer_line_id,
             "original_text": c.original_text,
-            "status": "processing",
+            "status": "registered",
         }
         for c in data.consultations
     ]
 
     result = db.table("consultations").insert(rows).execute()
 
-    created_ids = []
-    for consultation in result.data:
-        created_ids.append(consultation["id"])
-        background_tasks.add_task(run_pipeline, consultation["id"])
+    created_ids = [consultation["id"] for consultation in result.data]
 
     return {"created": len(created_ids), "ids": created_ids}
+
+
+@router.post("/generate-reports")
+async def generate_reports(data: GenerateReportsRequest, background_tasks: BackgroundTasks):
+    """선택한 상담건에 대해 AI 리포트 생성 파이프라인 실행"""
+    if len(data.consultation_ids) == 0:
+        raise HTTPException(status_code=400, detail="생성할 상담 ID가 없습니다")
+    if len(data.consultation_ids) > 50:
+        raise HTTPException(status_code=400, detail="최대 50건까지 일괄 생성 가능합니다")
+
+    db = get_supabase()
+
+    result = db.table("consultations").select("id, status").in_("id", data.consultation_ids).execute()
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="해당 상담을 찾을 수 없습니다")
+
+    found_ids = {row["id"] for row in result.data}
+    missing = set(data.consultation_ids) - found_ids
+    if missing:
+        raise HTTPException(status_code=404, detail=f"찾을 수 없는 상담 ID: {list(missing)}")
+
+    valid_statuses = {"registered", "report_failed"}
+    triggered_ids = []
+    skipped = []
+
+    for row in result.data:
+        if row["status"] in valid_statuses:
+            db.table("consultations").update({"status": "processing"}).eq("id", row["id"]).execute()
+            background_tasks.add_task(run_pipeline, row["id"])
+            triggered_ids.append(row["id"])
+        else:
+            skipped.append({
+                "id": row["id"],
+                "status": row["status"],
+                "reason": "이미 처리 중이거나 완료된 상담입니다",
+            })
+
+    return {
+        "triggered": len(triggered_ids),
+        "triggered_ids": triggered_ids,
+        "skipped": skipped,
+    }
 
 
 @router.get("")

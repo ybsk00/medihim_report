@@ -19,6 +19,7 @@ class CTALevel(str, Enum):
 
 
 class ConsultationStatus(str, Enum):
+    REGISTERED = "registered"
     PROCESSING = "processing"
     CLASSIFICATION_PENDING = "classification_pending"
     REPORT_GENERATING = "report_generating"
@@ -65,6 +66,14 @@ class CTAUpdateRequest(BaseModel):
 
 class ReportEditRequest(BaseModel):
     report_data: dict
+
+
+class ReportRegenerateRequest(BaseModel):
+    direction: str
+
+
+class GenerateReportsRequest(BaseModel):
+    consultation_ids: List[str]
 
 
 class BirthDateVerify(BaseModel):

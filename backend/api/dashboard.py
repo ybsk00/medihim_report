@@ -12,6 +12,15 @@ async def get_dashboard_stats():
     total = db.table("consultations").select("id", count="exact").execute()
     total_count = total.count or 0
 
+    # 등록 완료 (리포트 미생성)
+    registered = (
+        db.table("consultations")
+        .select("id", count="exact")
+        .eq("status", "registered")
+        .execute()
+    )
+    registered_count = registered.count or 0
+
     # 미분류 대기
     unclassified = (
         db.table("consultations")
@@ -65,6 +74,7 @@ async def get_dashboard_stats():
 
     return {
         "total_consultations": total_count,
+        "registered_count": registered_count,
         "unclassified_count": unclassified_count,
         "report_pending_count": report_pending_count,
         "sent_count": sent_count,

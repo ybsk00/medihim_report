@@ -35,6 +35,7 @@ async def write_report(
     classification: str,
     rag_results: list[dict],
     customer_name: str,
+    admin_direction: str | None = None,
 ) -> dict:
     # RAG 컨텍스트를 PubMed/YouTube 분리하여 정리
     pubmed_context = ""
@@ -65,6 +66,16 @@ async def write_report(
     else:
         category_note = "皮膚科の相談です。治療プロトコルを中心に記述してください。「レーザー治療Oコース」「O週間間隔で施術」等の具体的な治療計画表現を使用。"
 
+    # 관리자 재생성 지시 섹션 (있을 때만)
+    admin_direction_section = ""
+    if admin_direction:
+        admin_direction_section = f"""
+== 管理者からの修正指示（最優先で反映すること）==
+{admin_direction}
+
+上記の管理者指示を最優先で反映してください。特に指示された内容について、より詳しく、より丁寧に記述してください。
+"""
+
     # 고객명에서 성만 추출 (예: "田中 陽子" → "田中")
     name_parts = customer_name.split()
     display_name = name_parts[0] if name_parts else customer_name
@@ -89,7 +100,7 @@ async def write_report(
 
 == 医療情報参考資料（出典表記不要）==
 {youtube_context}
-
+{admin_direction_section}
 == 出力JSON形式 ==
 {{
     "title": "{display_name}様 OOのご相談まとめ",

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { dashboardAPI, type DashboardStats } from "@/lib/api";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
+  registered: { label: "등록 완료", color: "text-slate-600" },
   processing: { label: "AI 분석 중", color: "text-blue-500" },
   classification_pending: { label: "분류 대기", color: "text-amber-500" },
   report_generating: { label: "리포트 생성 중", color: "text-blue-500" },
