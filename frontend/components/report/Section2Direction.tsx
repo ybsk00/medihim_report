@@ -23,7 +23,7 @@ export default function Section2Direction({
   // V1: desired[] + quote
   if (!items && desired) {
     return (
-      <section className="fade-in-section">
+      <section>
         <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
           <span className="w-1 h-6 bg-coral rounded-full"></span>
           OO様がご希望されている方向
@@ -53,7 +53,7 @@ export default function Section2Direction({
   const directionItems = items || [];
 
   return (
-    <section className="fade-in-section">
+    <section>
       <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
         <span className="w-1 h-6 bg-coral rounded-full"></span>
         OO様がご希望されている方向

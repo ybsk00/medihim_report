@@ -21,7 +21,7 @@ export default function Section4Medical({ explanations, footnote }: Section4Prop
 
   if (isV1) {
     return (
-      <section className="fade-in-section">
+      <section>
         <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
           <span className="w-1 h-6 bg-coral rounded-full"></span>
           そのように感じられた理由について
@@ -42,7 +42,7 @@ export default function Section4Medical({ explanations, footnote }: Section4Prop
   }
 
   return (
-    <section className="fade-in-section">
+    <section>
       <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
         <span className="w-1 h-6 bg-coral rounded-full"></span>
         そのように感じられた理由について

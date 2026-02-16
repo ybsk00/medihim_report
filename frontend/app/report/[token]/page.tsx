@@ -70,14 +70,24 @@ export default function ConsumerReportPage({
           }
         });
       },
-      { threshold: 0.3 }
+      { threshold: 0.2 }
     );
 
     sectionRefs.current.forEach((ref) => {
       if (ref) observer.observe(ref);
     });
 
-    return () => observer.disconnect();
+    // 모바일 안전장치: 1초 후에도 보이지 않으면 전체 visible 처리
+    const fallback = setTimeout(() => {
+      sectionRefs.current.forEach((ref) => {
+        if (ref) ref.classList.add("visible");
+      });
+    }, 1000);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(fallback);
+    };
   }, [loading, report]);
 
   if (loading) {
@@ -145,18 +155,18 @@ export default function ConsumerReportPage({
 
       {/* Sections */}
       <div className="px-5 py-8 space-y-10">
-        <div ref={(el) => { sectionRefs.current[0] = el; }}>
+        <div className="fade-in-section" ref={(el) => { sectionRefs.current[0] = el; }}>
           <Section1Summary
             text={report.section1_summary.text}
             points={report.section1_summary.points}
           />
         </div>
 
-        <div ref={(el) => { sectionRefs.current[1] = el; }}>
+        <div className="fade-in-section" ref={(el) => { sectionRefs.current[1] = el; }}>
           <Section2Direction {...s2Props} />
         </div>
 
-        <div ref={(el) => { sectionRefs.current[2] = el; }}>
+        <div className="fade-in-section" ref={(el) => { sectionRefs.current[2] = el; }}>
           <Section3Concerns
             points={s3.points}
             interpretation={s3.interpretation}
@@ -164,21 +174,21 @@ export default function ConsumerReportPage({
           />
         </div>
 
-        <div ref={(el) => { sectionRefs.current[3] = el; }}>
+        <div className="fade-in-section" ref={(el) => { sectionRefs.current[3] = el; }}>
           <Section4Medical
             explanations={report.section4_medical.explanations}
             footnote={report.section4_medical.footnote}
           />
         </div>
 
-        <div ref={(el) => { sectionRefs.current[4] = el; }}>
+        <div className="fade-in-section" ref={(el) => { sectionRefs.current[4] = el; }}>
           <Section5Proposal
             steps={report.section5_proposal.steps}
             context_note={report.section5_proposal.context_note}
           />
         </div>
 
-        <div ref={(el) => { sectionRefs.current[5] = el; }}>
+        <div className="fade-in-section" ref={(el) => { sectionRefs.current[5] = el; }}>
           <Section6Options
             recommended={report.section6_options.recommended}
             optional={report.section6_options.optional}
@@ -187,7 +197,7 @@ export default function ConsumerReportPage({
           />
         </div>
 
-        <div ref={(el) => { sectionRefs.current[6] = el; }}>
+        <div className="fade-in-section" ref={(el) => { sectionRefs.current[6] = el; }}>
           <Section7Recovery
             info={report.section7_recovery.info}
             closing={report.section7_recovery.closing}

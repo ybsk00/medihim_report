@@ -72,9 +72,7 @@ body {
   transition: opacity 0.6s ease-out, transform 0.6s ease-out;
 }
 
-.fade-in-section.visible,
-.visible > .fade-in-section,
-.visible > section {
+.fade-in-section.visible {
   opacity: 1;
   transform: translateY(0);
 }
