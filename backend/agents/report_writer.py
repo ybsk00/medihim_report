@@ -211,7 +211,9 @@ async def write_report(
 - CTA情報はリポートに含めないでください
 - RAG資料がない施術は「ご来院時に詳しくご案内いたします」で対応
 - 全セクション必須
-- PubMed論文の統計/数値を引用する場合のみ citation フィールドを追加（統計がない一般説明にはcitation不要）
+- citationは上記「PubMed論文参考資料」セクションに実際に提供された論文のみ引用可能。提供されていない論文のPMIDやURLを絶対に捏造しないこと
+- 「※PubMed論文参考資料なし」の場合、citationフィールドは一切含めないこと。統計データも含めないこと
+- citationのURLは上記PubMed参考資料のURLをそのまま使用すること（新しいURLを生成しない）
 - citation の title は必ず日本語に翻訳すること（英語の論文タイトルをそのまま使わない）。URLはそのまま保持
 - YouTube/一般医療知識に基づく説明にはcitation不要
 - section4のtextは必ず3文以上で記述すること
@@ -219,4 +221,22 @@ async def write_report(
 - section6の各カテゴリのitemsは配列で、複数項目を含めること"""
 
     result = await generate_json(prompt, SYSTEM_INSTRUCTION)
-    return json.loads(result)
+    report = json.loads(result)
+
+    # ── 후처리: RAG에 없는 날조 citation 제거 ──
+    valid_urls = set()
+    if rag_results:
+        for faq in rag_results:
+            url = faq.get("youtube_url", "")
+            if url and "pubmed" in url:
+                valid_urls.add(url.rstrip("/"))
+
+    s4 = report.get("section4_medical", {})
+    for exp in s4.get("explanations", []):
+        cit = exp.get("citation")
+        if cit:
+            cit_url = (cit.get("url") or "").rstrip("/")
+            if not valid_urls or cit_url not in valid_urls:
+                del exp["citation"]
+
+    return report
