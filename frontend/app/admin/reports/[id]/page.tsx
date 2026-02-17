@@ -572,7 +572,7 @@ export default function ReportDetailPage({
 
         {/* Approved Info */}
         {report.status === "approved" && (
-          <div className="bg-white rounded-xl border border-emerald-200 shadow-sm p-6 space-y-3">
+          <div className="bg-white rounded-xl border border-emerald-200 shadow-sm p-6 space-y-4">
             <div className="flex items-center gap-2 text-emerald-600">
               <span className="material-symbols-outlined">check_circle</span>
               <span className="text-sm font-semibold">승인 완료</span>
@@ -580,6 +580,34 @@ export default function ReportDetailPage({
             <p className="text-sm text-slate-500">
               이메일 발송은 <Link href="/admin/emails" className="text-primary underline">이메일 발송</Link> 메뉴에서 진행하세요.
             </p>
+
+            <div className="relative inline-block">
+              <button
+                onClick={() => setShowShare(!showShare)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+              >
+                <span className="material-symbols-outlined text-lg">share</span>
+                URL 공유
+              </button>
+              {showShare && (
+                <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-lg border border-slate-200 py-1 w-48 z-20">
+                  <button
+                    onClick={handleCopyLink}
+                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-lg">content_copy</span>
+                    링크 복사
+                  </button>
+                  <button
+                    onClick={handleLineShare}
+                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-lg">chat</span>
+                    LINE으로 공유
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

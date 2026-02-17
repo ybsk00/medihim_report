@@ -14,7 +14,7 @@ const menuItems = [
     icon: "move_to_inbox",
     label: "미분류 처리",
   },
-  { href: "/admin/vectors", icon: "database", label: "벡터DB 관리" },
+  // { href: "/admin/vectors", icon: "database", label: "벡터DB 관리" },
 ];
 
 export default function Sidebar() {

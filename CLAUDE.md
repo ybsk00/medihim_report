@@ -11,14 +11,15 @@
 ## 기술 스택
 
 ### 프론트엔드
-- **프레임워크**: Next.js 14+ (App Router)
-- **스타일링**: Tailwind CSS
-- **배포**: Vercel Pro
+- **프레임워크**: Next.js 16+ (App Router)
+- **스타일링**: Tailwind CSS v4
+- **배포**: Firebase Hosting (https://ipp0-medhim.web.app)
 - **용도**: 관리자페이지(한국어) + 소비자 리포트 웹페이지(일본어)
 
 ### 백엔드
-- **프레임워크**: Python FastAPI
-- **배포**: Google Cloud Run
+- **프레임워크**: Python FastAPI (Python 3.13)
+- **배포**: Google Cloud Run (asia-northeast3)
+- **GitHub**: https://github.com/ybsk00/medihim_report (push 시 자동 배포)
 - **용도**: AI 에이전트 파이프라인, YouTube 자막 수집, 벡터DB 구축, 이메일 발송
 
 ### 데이터베이스
@@ -31,8 +32,8 @@
 - **벡터 검색**: Supabase pgvector
 
 ### 이메일
-- **Resend** (무료 플랜: 월 3,000건, 일 100건)
-- 커스텀 도메인 설정 가능
+- **Gmail SMTP** (ippo.medihim@gmail.com, App Password 인증)
+- `smtplib.SMTP_SSL("smtp.gmail.com", 465)` + `asyncio.to_thread` 비동기 발송
 
 ---
 
@@ -42,9 +43,14 @@
 GEMINI_API_KEY=           # Gemini API (LLM + 임베딩 모두)
 SUPABASE_URL=             # Supabase 프로젝트 URL
 SUPABASE_SERVICE_KEY=     # Supabase 서비스 키 (서버 전용)
-RESEND_API_KEY=           # Resend 이메일 발송
+GMAIL_ADDRESS=            # Gmail 이메일 (ippo.medihim@gmail.com)
+GMAIL_APP_PASSWORD=       # Gmail 앱 비밀번호
+FRONTEND_URL=             # 프론트엔드 URL (https://ipp0-medhim.web.app)
 YOUTUBE_API_KEY=          # YouTube Data API v3
-REPLY_TO_EMAIL=           # 회신 수신 이메일 (현재 개인 계정, 추후 교체)
+ADMIN_SECRET=             # 관리자 JWT 시크릿
+NCBI_API_KEY=             # PubMed NCBI API 키
+NCBI_EMAIL=               # NCBI API 이메일
+NCBI_TOOL=                # NCBI API 도구명
 ```
 
 > ⚠️ 모든 API 키는 서버단(.env)에서만 관리. 관리자페이지 UI에 절대 노출하지 않는다.
@@ -124,7 +130,7 @@ ippo/
 │   ├── services/
 │   │   ├── supabase_client.py   # Supabase 연결
 │   │   ├── gemini_client.py     # Gemini API (LLM + 임베딩)
-│   │   ├── email_service.py     # Resend 이메일 발송
+│   │   ├── email_service.py     # Gmail SMTP 이메일 발송
 │   │   └── youtube_service.py   # YouTube 자막 수집 + 정제 + FAQ 변환
 │   ├── models/
 │   │   └── schemas.py           # Pydantic 데이터 모델
@@ -193,7 +199,8 @@ CREATE TABLE consultations (
     -- 구조: ["7月に合わせられますか？", "費用はどのくらい？"]
     
     -- 상태
-    status TEXT DEFAULT 'processing' CHECK (status IN (
+    status TEXT DEFAULT 'registered' CHECK (status IN (
+        'registered',        -- 등록 완료 (파이프라인 미실행)
         'processing',        -- 파이프라인 처리 중
         'classification_pending',  -- 미분류 (수동 분류 대기)
         'report_generating', -- 리포트 생성 중
@@ -444,24 +451,33 @@ $$;
             [DB 저장 → 관리자 검토 대기]
 ```
 
-### 비동기 처리
+### 상담 등록과 리포트 생성 분리
 
-상담 등록 API는 즉시 응답("처리 중")을 반환하고, 파이프라인은 백그라운드에서 실행한다.
-관리자페이지에서 상태가 "처리 중 → 생성완료"로 변경되는 것을 확인한다.
+상담 등록과 AI 파이프라인 실행이 분리되어 있다:
+1. **상담 등록** (`POST /api/consultations`) → `status: "registered"` (파이프라인 미실행)
+2. **리포트 생성** (`POST /api/consultations/generate-reports`) → 관리자가 체크박스 선택 후 수동 트리거
+   - status `registered` 또는 `report_failed` 상태만 허용
+   - 최대 50건 동시 생성 (concurrency=5)
 
 ```python
-# backend/api/consultation.py
-@app.post("/api/consultations")
-async def create_consultation(data: ConsultationCreate):
-    # 1. DB에 상담 데이터 저장 (status: 'processing')
-    consultation = save_to_db(data)
-    
-    # 2. 백그라운드에서 파이프라인 실행
-    background_tasks.add_task(run_pipeline, consultation.id)
-    
-    # 3. 즉시 응답
-    return {"id": consultation.id, "status": "processing"}
+# 등록만 (파이프라인 미실행)
+@router.post("")
+async def create_consultation(data):
+    result = db.table("consultations").insert({..., "status": "registered"}).execute()
+    return {"id": consultation["id"], "status": "registered"}
+
+# 별도로 리포트 생성 트리거
+@router.post("/generate-reports")
+async def generate_reports(data):
+    background_tasks.add_task(_run_pipelines_parallel, triggered_ids, 5)
 ```
+
+### 리포트 재생성 (관리자 피드백 기반)
+
+관리자가 생성된 리포트에 대해 한국어로 방향을 지시하면 RAG 재검색 + 리포트 재생성:
+- `POST /api/reports/{id}/regenerate` → `{ direction: "..." }`
+- 관리자 지시사항이 프롬프트에 최우선으로 반영됨
+- 재생성 후 한국어 번역 캐시(`report_data_ko`) 자동 초기화
 
 ---
 
@@ -876,14 +892,13 @@ JSON 배열로 반환.
 
 ## 이메일 발송 시스템
 
-### 발송 흐름
+### 발송 흐름 (승인과 발송 분리)
 
 ```
-[관리자 리포트 승인]
+[관리자 리포트 승인] → status: approved (이메일 발송 없음)
        │
-       ├──→ [이메일 자동 발송] Resend API
-       │    From: report@ippo.co.kr
-       │    Reply-To: {REPLY_TO_EMAIL} (.env에서)
+       ├──→ [이메일 발송 버튼] → Gmail SMTP 발송
+       │    From: イッポ <ippo.medihim@gmail.com>
        │    To: 고객 이메일
        │    내용: 리포트 URL 포함
        │
@@ -893,9 +908,10 @@ JSON 배열로 반환.
 ```
 
 ### 이메일 내용
-- 제목: "【이뽀】OO様 ご相談リポートが届きました"
+- 제목: "【イッポ】OO様 ご相談リポートが届きました"
 - 본문: 간단한 인사 + 리포트 URL 링크 + 유효기간 안내
 - 디자인: 심플하고 깔끔한 HTML 이메일
+- 발송: Gmail SMTP (smtplib.SMTP_SSL + asyncio.to_thread)
 
 ### URL 공유 버튼 (ShareButton.tsx)
 - 버튼 클릭 → 드롭다운 메뉴
@@ -910,22 +926,30 @@ JSON 배열로 반환.
 ### 상담 관련
 
 ```
-POST   /api/consultations          # 새 상담 등록 (파이프라인 자동 시작)
-GET    /api/consultations          # 상담 목록 (필터: classification, status, page)
-GET    /api/consultations/{id}     # 상담 상세
+POST   /api/consultations                # 새 상담 등록 (status: registered, 파이프라인 미실행)
+POST   /api/consultations/bulk           # 일괄 등록 (최대 100건)
+POST   /api/consultations/generate-reports  # 선택한 상담에 리포트 생성 트리거 (최대 50건)
+GET    /api/consultations                # 상담 목록 (필터: classification, status, page)
+GET    /api/consultations/{id}           # 상담 상세
+PUT    /api/consultations/{id}           # 고객 정보 수정 (이름, 이메일, LINE ID, 플랫폼 ID)
 PUT    /api/consultations/{id}/classify  # 수동 분류 (미분류 → 피부과/성형외과, 파이프라인 재개)
-PUT    /api/consultations/{id}/cta      # CTA 레벨 수동 변경
+PUT    /api/consultations/{id}/cta       # CTA 레벨 수동 변경
+POST   /api/consultations/delete         # 선택한 상담 삭제
 ```
 
 ### 리포트 관련
 
 ```
-GET    /api/reports                # 리포트 목록
-GET    /api/reports/{id}           # 리포트 상세
-PUT    /api/reports/{id}/approve   # 리포트 승인 → 이메일 자동 발송 + URL 생성
-PUT    /api/reports/{id}/reject    # 리포트 반려
-PUT    /api/reports/{id}/edit      # 리포트 내용 수정
-GET    /api/reports/{id}/translate # 한국어 번역 요청 (캐싱)
+GET    /api/reports                      # 리포트 목록
+GET    /api/reports/{id}                 # 리포트 상세
+PUT    /api/reports/{id}/approve         # 리포트 승인 (이메일 발송 없이 승인만)
+POST   /api/reports/{id}/send-email      # 승인된 리포트 이메일 발송
+PUT    /api/reports/{id}/reject          # 리포트 반려
+PUT    /api/reports/{id}/edit            # 리포트 내용 수정
+GET    /api/reports/{id}/translate       # 한국어 번역 요청 (캐싱)
+POST   /api/reports/{id}/regenerate      # 관리자 피드백 기반 재생성
+POST   /api/reports/bulk-approve         # 일괄 승인
+POST   /api/reports/delete               # 선택한 리포트 삭제
 ```
 
 ### 소비자 리포트
@@ -954,28 +978,24 @@ GET    /api/dashboard/stats        # 대시보드 통계 (총 상담, 미분류,
 
 ## 배포 설정
 
-### Vercel (프론트엔드)
+### Firebase Hosting (프론트엔드)
 
-```json
-// vercel.json
-{
-  "framework": "nextjs",
-  "buildCommand": "cd frontend && npm run build",
-  "outputDirectory": "frontend/.next",
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://ippo-backend-XXXXX-an.a.run.app/api/:path*"
-    }
-  ]
-}
+- **URL**: https://ipp0-medhim.web.app
+- Next.js SSR은 Cloud Functions로 자동 배포됨
+- API 프록시: `firebase.json`의 rewrites 설정으로 `/api/*` → Cloud Run
+
+```bash
+cd frontend && npx firebase deploy --only hosting
 ```
 
 ### Google Cloud Run (백엔드)
 
+- **리전**: asia-northeast3
+- GitHub push 시 자동 빌드/배포
+
 ```dockerfile
 # backend/Dockerfile
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 COPY requirements.txt .
@@ -986,28 +1006,17 @@ COPY . .
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
 ```
 
-```yaml
-# backend/requirements.txt
+```
+# backend/requirements.txt (주요)
 fastapi
 uvicorn[standard]
 google-generativeai
 supabase
-resend
 youtube-transcript-api
 pydantic
 python-dotenv
 httpx
-```
-
-### Cloud Run 배포 커맨드
-
-```bash
-cd backend
-gcloud run deploy ippo-backend \
-  --source . \
-  --region asia-northeast1 \
-  --allow-unauthenticated \
-  --set-env-vars "GEMINI_API_KEY=...,SUPABASE_URL=...,SUPABASE_SERVICE_KEY=...,RESEND_API_KEY=...,YOUTUBE_API_KEY=...,REPLY_TO_EMAIL=..."
+PyJWT
 ```
 
 ---
@@ -1056,40 +1065,27 @@ INSERT INTO classification_keywords (category, keyword, context_keywords) VALUES
 
 ---
 
-## 실행 순서 (Claude Code 작업 순서)
+## 현재 완료 상태
 
-### Phase 1: 인프라 세팅
-1. Supabase 프로젝트에 pgvector 확장 활성화
-2. 위 SQL 스키마 전체 실행 (테이블 + 함수 + 인덱스)
-3. 분류 키워드 초기 데이터 INSERT
-4. 프로젝트 디렉토리 구조 생성
+- Phase 1 (인프라): 완료
+- Phase 2 (백엔드): 완료 — 9개 에이전트 + 파이프라인 + API + Gmail 이메일
+- Phase 3 (프론트엔드): 완료 — 관리자페이지 + 소비자 리포트
+- Phase 4 (배포): 완료 — Cloud Run (백엔드) + Firebase (프론트엔드)
+- 벡터DB 파이프라인: 완료 — YouTube 2,448 + PubMed 2,336 = 4,784 벡터
+- 추가 기능: 고객 정보 수정, 일괄 승인, 리포트 재생성, 벡터DB 관리 페이지
 
-### Phase 2: 백엔드 파이프라인 (Python FastAPI)
-1. FastAPI 앱 기본 구조 + 환경변수 로드
-2. Supabase 클라이언트 연결
-3. Gemini 클라이언트 (LLM + 임베딩)
-4. 각 에이전트 순서대로 구현:
-   - translator → cta_analyzer → intent_extractor → classifier → validator → rag_agent → report_writer → report_reviewer → korean_translator
-5. 파이프라인 오케스트레이터 (pipeline.py)
-6. API 엔드포인트 구현
-7. Resend 이메일 발송
-8. YouTube 자막 수집 파이프라인
+---
 
-### Phase 3: 프론트엔드 (Next.js)
-1. Next.js 프로젝트 생성 + Tailwind 설정
-2. design-reference/ HTML 파일 참고하여 컴포넌트 구현
-3. 관리자페이지 4개 화면:
-   - 대시보드 → 상담 관리 → 미분류 처리 → 리포트 관리
-4. 소비자 리포트 페이지 (7섹션)
-5. Supabase 인증 연동 (관리자 로그인)
-6. Cloud Run API 연결
+## 벡터DB 현황 (완료)
 
-### Phase 4: 배포
-1. 백엔드 → Docker 빌드 → Cloud Run 배포
-2. 프론트엔드 → Vercel 배포
-3. Vercel에서 Cloud Run API 프록시 설정
-4. Resend 도메인 설정
-5. 통합 테스트
+| 소스 | 벡터 수 | 비고 |
+|------|---------|------|
+| YouTube FAQ | 2,448 | 1,104개 영상 임베딩 완료 |
+| PubMed FAQ | 2,336 | 853편 논문, 34개 카테고리 |
+| **합계** | **4,784** | 피부과 2,282 + 성형외과 2,502 |
+
+- 임베딩 모델: `models/gemini-embedding-001` (output_dimensionality=768)
+- PubMed 데이터: `youtube_video_id`=PMID, `youtube_url`=PubMed URL로 저장 (URL 패턴으로 구분)
 
 ---
 
@@ -1105,3 +1101,6 @@ INSERT INTO classification_keywords (category, keyword, context_keywords) VALUES
 8. **YouTube 자동 자막 없는 영상은 스킵.** 처리하려고 시간 쓰지 말 것.
 9. **리포트 톤: 부드러운 제안형.** 단정형/명령형 절대 사용 금지.
 10. **모바일 최적화 필수.** 리포트 페이지는 480px 기준으로 디자인.
+11. **Gemini API JSON 응답 방어.** `json.loads()` 후 `isinstance(data, list)` 체크 필수 (가끔 `[{...}]` 반환).
+12. **Supabase select() 페이지네이션.** 기본 1000행 제한. `.range(offset, offset+999)` 루프 필요.
+13. **이메일 발송 실패가 승인을 블로킹하면 안 됨.** 승인과 이메일 발송은 별도 동작.
