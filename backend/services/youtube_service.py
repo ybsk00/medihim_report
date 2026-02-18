@@ -24,7 +24,7 @@ def _safe_print(msg: str):
 # 초기화
 # ============================================
 genai.configure(api_key=GEMINI_API_KEY)
-_llm = genai.GenerativeModel("gemini-2.0-flash")
+_llm = genai.GenerativeModel("gemini-2.5-flash")
 _embedding_model = "models/gemini-embedding-001"
 
 

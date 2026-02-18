@@ -18,7 +18,7 @@ _RETRYABLE_ERRORS = ("429", "500", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE", "
 def get_model():
     global _model
     if _model is None:
-        _model = genai.GenerativeModel("gemini-2.0-flash")
+        _model = genai.GenerativeModel("gemini-2.5-flash")
     return _model
 
 
@@ -54,7 +54,7 @@ async def generate_text(prompt: str, system_instruction: str = "") -> str:
     model = get_model()
     if system_instruction:
         model = genai.GenerativeModel(
-            "gemini-2.0-flash",
+            "gemini-2.5-flash",
             system_instruction=system_instruction,
         )
     response = await _retry_generate(model, prompt)
@@ -68,7 +68,7 @@ def _clean_json_text(text: str) -> str:
 
 async def generate_json(prompt: str, system_instruction: str = "") -> str:
     model = genai.GenerativeModel(
-        "gemini-2.0-flash",
+        "gemini-2.5-flash",
         system_instruction=system_instruction,
         generation_config=genai.GenerationConfig(
             response_mime_type="application/json",
