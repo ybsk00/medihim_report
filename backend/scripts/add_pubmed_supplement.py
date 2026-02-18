@@ -145,7 +145,7 @@ def _gemini_call(prompt: str, max_retries: int = 5) -> str:
     for attempt in range(max_retries):
         try:
             response = _gemini.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 contents=prompt,
             )
             if response and response.text:

@@ -145,7 +145,7 @@ def download_audio(video_id: str, output_dir: str, retry: int = 0) -> str | None
 # Gemini Audio로 전사
 # ============================================
 def transcribe_with_gemini(audio_path: str) -> str | None:
-    """Gemini 2.0 Flash로 오디오 전사.
+    """Gemini 2.5 Flash로 오디오 전사.
     파일을 Gemini Files API에 업로드 후 전사 요청.
     """
     try:
@@ -172,7 +172,7 @@ def transcribe_with_gemini(audio_path: str) -> str | None:
         # 전사 요청
         _safe_print("    -> transcribing...")
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=[
                 types.Content(
                     parts=[

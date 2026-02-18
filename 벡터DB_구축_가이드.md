@@ -335,7 +335,7 @@ import google.generativeai as genai
 from config import GEMINI_API_KEY
 
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-2.0-flash")
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 REFINE_PROMPT = """당신은 한국어 의료 콘텐츠 전문 교정자입니다.
 아래는 YouTube 의료 영상의 자동생성 자막입니다. 다음 작업을 수행하세요:
