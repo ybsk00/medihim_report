@@ -47,7 +47,7 @@ export default function LoginPage() {
             medical_services
           </span>
         </div>
-        <h1 className="text-2xl font-bold text-white">메디힘 이뽀</h1>
+        <h1 className="text-2xl font-bold text-white">메디힘 이뻐</h1>
         <p className="text-slate-400 text-sm mt-1">Admin Console</p>
       </div>
 
