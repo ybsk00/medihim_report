@@ -370,7 +370,7 @@ export default function ConsultationsPage() {
                       return (
                         <tr
                           key={item.id}
-                          className={`hover:bg-slate-50 transition-colors cursor-pointer ${isProcessing ? "bg-blue-50/30" : ""}`}
+                          className={`hover:bg-slate-50 transition-colors ${isProcessing ? "bg-blue-50/30" : ""}`}
                         >
                           <td className="px-6 py-4">
                             <input
@@ -392,7 +392,7 @@ export default function ConsultationsPage() {
                           <td className="px-6 py-4">
                             <Link
                               href={`/admin/consultations/${item.id}`}
-                              className="font-medium text-slate-900 hover:text-primary"
+                              className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
                             >
                               {item.customer_name}
                             </Link>
