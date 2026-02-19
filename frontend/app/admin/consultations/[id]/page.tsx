@@ -26,6 +26,7 @@ export default function ConsultationDetailPage({
   const [data, setData] = useState<Consultation | null>(null);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<"ja" | "ko">("ja");
+  const [ctaLang, setCtaLang] = useState<"ja" | "ko">("ja");
   const [ctaLevel, setCtaLevel] = useState("");
   const [ctaSaving, setCtaSaving] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -259,15 +260,45 @@ export default function ConsultationDetailPage({
 
               {data.cta_signals && data.cta_signals.length > 0 && (
                 <div>
-                  <p className="text-sm text-slate-500 mb-2">CTA 판단 근거 (고객 발화):</p>
-                  <ul className="space-y-1.5">
-                    {data.cta_signals.map((signal, i) => (
-                      <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
-                        <span className="text-slate-400 mt-0.5">•</span>
-                        <span className="italic">&ldquo;{signal}&rdquo;</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-slate-500">CTA 판단 근거 (고객 발화):</p>
+                    <div className="flex bg-slate-100 rounded-md p-0.5">
+                      <button
+                        onClick={() => setCtaLang("ja")}
+                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                          ctaLang === "ja"
+                            ? "bg-white text-slate-800 shadow-sm"
+                            : "text-slate-500 hover:text-slate-700"
+                        }`}
+                      >
+                        일본어
+                      </button>
+                      <button
+                        onClick={() => setCtaLang("ko")}
+                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                          ctaLang === "ko"
+                            ? "bg-white text-slate-800 shadow-sm"
+                            : "text-slate-500 hover:text-slate-700"
+                        }`}
+                      >
+                        한국어
+                      </button>
+                    </div>
+                  </div>
+                  {ctaLang === "ja" ? (
+                    <ul className="space-y-1.5">
+                      {data.cta_signals.map((signal, i) => (
+                        <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
+                          <span className="text-slate-400 mt-0.5">•</span>
+                          <span className="italic">&ldquo;{signal}&rdquo;</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                      {data.customer_utterances || "한국어 번역 데이터가 없습니다."}
+                    </p>
+                  )}
                 </div>
               )}
 
