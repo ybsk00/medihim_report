@@ -109,14 +109,6 @@ export default function ConsultationDetailPage({
     );
   }
 
-  const segments =
-    lang === "ja"
-      ? data.speaker_segments || []
-      : (data.speaker_segments || []).map((seg, i) => {
-          // translated_segments가 없으면 원본 사용
-          return seg;
-        });
-
   const ctaBadge = data.cta_level ? CTA_BADGE[data.cta_level] : null;
 
   return (
@@ -329,8 +321,8 @@ export default function ConsultationDetailPage({
             </div>
           </div>
           <div className="p-6 space-y-3 max-h-[500px] overflow-y-auto">
-            {segments.length > 0 ? (
-              segments.map((seg, i) => (
+            {lang === "ja" && (data.speaker_segments || []).length > 0 ? (
+              (data.speaker_segments || []).map((seg, i) => (
                 <div
                   key={i}
                   className={`flex gap-3 p-3 rounded-lg ${
@@ -351,12 +343,12 @@ export default function ConsultationDetailPage({
                 </div>
               ))
             ) : (
-              <div className="py-8 text-center">
-                {lang === "ko" && data.translated_text ? (
-                  <p className="text-sm text-slate-600 whitespace-pre-wrap">{data.translated_text}</p>
-                ) : (
-                  <p className="text-sm text-slate-600 whitespace-pre-wrap">{data.original_text}</p>
-                )}
+              <div className="py-4">
+                <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                  {lang === "ko"
+                    ? (data.translated_text || data.original_text)
+                    : data.original_text}
+                </p>
               </div>
             )}
           </div>
