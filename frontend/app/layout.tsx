@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "메디힘 이뽀 | Admin",
-  description: "메디힘 이뽀 AI 상담 리포트 관리 시스템",
+  title: "메디힘 이뻐 | Admin",
+  description: "메디힘 이뻐 AI 상담 리포트 관리 시스템",
 };
 
 export default function RootLayout({
