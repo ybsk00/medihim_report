@@ -79,12 +79,12 @@ async def get_report(report_id: str):
         db.table("reports")
         .select("*, consultations(customer_name, customer_email, customer_line_id, classification, cta_level)")
         .eq("id", report_id)
-        .maybe_single()
+        .limit(1)
         .execute()
     )
 
-    if result.data:
-        return result.data
+    if result.data and len(result.data) > 0:
+        return result.data[0]
 
     # 2차: consultation_id로 조회 (상담 상세에서 리포트 보기 링크용)
     result = (
