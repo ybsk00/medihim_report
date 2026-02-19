@@ -254,7 +254,7 @@ export default function AdminDashboard() {
 
       {/* Footer */}
       <footer className="mt-auto py-6 px-8 text-center text-slate-400 text-xs border-t border-slate-200 bg-white">
-        &copy; 2026 Medihim Ippo. All rights reserved.
+        &copy; 2026 Medihim Ippeo. All rights reserved.
       </footer>
     </>
   );

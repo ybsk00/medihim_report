@@ -25,7 +25,7 @@ from api.admin import router as admin_router
 from api.vectors import router as vectors_router
 
 app = FastAPI(
-    title="MediHim Ippo API",
+    title="MediHim Ippeo API",
     description="AI 상담 리포트 시스템 백엔드",
     version="1.0.0",
 )
@@ -57,7 +57,7 @@ app.include_router(vectors_router)
 
 @app.get("/")
 async def root():
-    return {"service": "MediHim Ippo API", "status": "running"}
+    return {"service": "MediHim Ippeo API", "status": "running"}
 
 
 @app.get("/health")

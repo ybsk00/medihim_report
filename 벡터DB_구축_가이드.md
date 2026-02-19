@@ -19,7 +19,7 @@
 
 1. https://console.cloud.google.com 접속
 2. 상단 프로젝트 선택 → **[새 프로젝트]**
-   - 프로젝트 이름: `ippo-youtube`
+   - 프로젝트 이름: `ippeo-youtube`
    - [만들기] 클릭
 3. 생성된 프로젝트 선택
 

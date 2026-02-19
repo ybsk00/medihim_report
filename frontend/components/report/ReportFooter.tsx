@@ -30,7 +30,7 @@ export default function ReportFooter() {
           本リポートはカウンセリング時の内容を元に作成されたものであり、確定的な診断や治療を保証するものではありません。
         </p>
         <p className="text-[10px] text-gray-400">
-          &copy; 2026 IPPO Beauty Consultation.
+          &copy; 2026 IPPEO Beauty Consultation.
         </p>
       </div>
     </footer>

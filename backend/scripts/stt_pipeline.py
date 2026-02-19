@@ -242,7 +242,7 @@ def run_stt_pipeline(limit: int | None = None):
     failed = 0
 
     # 임시 디렉토리 생성
-    tmp_dir = os.path.join(tempfile.gettempdir(), "ippo_stt")
+    tmp_dir = os.path.join(tempfile.gettempdir(), "ippeo_stt")
     os.makedirs(tmp_dir, exist_ok=True)
 
     for i, video in enumerate(skipped.data):

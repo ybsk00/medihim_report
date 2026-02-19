@@ -1,4 +1,4 @@
-# 메디힘 이뽀 (MediHim Ippo) — AI 상담 리포트 시스템
+# 메디힘 이뽀 (MediHim Ippeo) — AI 상담 리포트 시스템
 
 ## 프로젝트 개요
 
@@ -60,7 +60,7 @@ NCBI_TOOL=                # NCBI API 도구명
 ## 프로젝트 디렉토리 구조
 
 ```
-ippo/
+ippeo/
 ├── frontend/                    # Next.js (Vercel 배포)
 │   ├── app/
 │   │   ├── admin/               # 관리자페이지 (한국어)

@@ -1,5 +1,5 @@
-const TOKEN_KEY = "ippo_admin_token";
-const USERNAME_KEY = "ippo_admin_username";
+const TOKEN_KEY = "ippeo_admin_token";
+const USERNAME_KEY = "ippeo_admin_username";
 
 export function saveAuth(token: string, username: string) {
   localStorage.setItem(TOKEN_KEY, token);

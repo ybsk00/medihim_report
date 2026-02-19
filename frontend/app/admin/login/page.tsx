@@ -102,7 +102,7 @@ export default function LoginPage() {
       </form>
 
       <p className="text-center text-slate-500 text-xs mt-6">
-        &copy; 2026 Medihim Ippo. All rights reserved.
+        &copy; 2026 Medihim Ippeo. All rights reserved.
       </p>
     </div>
   );
