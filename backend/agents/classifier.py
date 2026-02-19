@@ -1,5 +1,5 @@
 import json
-from services.gemini_client import generate_json
+from services.gemini_client import generate_json, safe_parse_json
 from services.supabase_client import get_supabase
 
 SYSTEM_INSTRUCTION = """당신은 의료 상담 분류 전문가입니다.
@@ -53,7 +53,7 @@ JSON 형식으로 반환:
 }}"""
 
     result = await generate_json(prompt, SYSTEM_INSTRUCTION)
-    data = json.loads(result)
+    data = safe_parse_json(result)
     if isinstance(data, list):
         data = data[0] if data else {}
     return data

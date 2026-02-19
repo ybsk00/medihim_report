@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from services.gemini_client import generate_json
+from services.gemini_client import generate_json, safe_parse_json
 
 logger = logging.getLogger(__name__)
 
@@ -237,7 +237,7 @@ async def write_report(
     for parse_attempt in range(2):
         result = await generate_json(prompt, SYSTEM_INSTRUCTION)
         try:
-            report = json.loads(result)
+            report = safe_parse_json(result)
             if isinstance(report, list):
                 report = report[0] if report else {}
             break

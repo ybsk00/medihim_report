@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from services.gemini_client import generate_json
+from services.gemini_client import generate_json, safe_parse_json
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ JSON形式で返してください:
     for parse_attempt in range(2):
         result = await generate_json(prompt, SYSTEM_INSTRUCTION)
         try:
-            data = json.loads(result)
+            data = safe_parse_json(result)
             if isinstance(data, list):
                 data = data[0] if data else {"passed": True, "score": 70, "issues": [], "suggestions": [], "feedback": ""}
             return data

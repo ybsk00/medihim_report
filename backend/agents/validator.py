@@ -1,5 +1,5 @@
 import json
-from services.gemini_client import generate_json
+from services.gemini_client import generate_json, safe_parse_json
 
 SYSTEM_INSTRUCTION = """당신은 의료 상담 분류 검증 전문가입니다.
 분류 에이전트의 결과를 검증하여 최종 분류를 확정하거나, 관리자 검토가 필요한 경우 unclassified로 플래그합니다.
@@ -53,7 +53,7 @@ JSON 형식:
 }}"""
 
     result = await generate_json(prompt, SYSTEM_INSTRUCTION)
-    data = json.loads(result)
+    data = safe_parse_json(result)
     if isinstance(data, list):
         data = data[0] if data else {}
     return data

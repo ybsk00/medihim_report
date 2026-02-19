@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import re
 import google.generativeai as genai
@@ -66,7 +67,64 @@ def _clean_json_text(text: str) -> str:
     return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', ' ', text)
 
 
-async def generate_json(prompt: str, system_instruction: str = "") -> str:
+def repair_json(text: str) -> str:
+    """Gemini가 반환한 불완전한 JSON을 복구 시도.
+    - 제어 문자 제거
+    - markdown 코드 블록 제거
+    - 후행 콤마 제거
+    - 누락된 콤마 삽입 (}"  → }," / ]"  → ]," / ""  → "," 패턴)
+    - 닫히지 않은 괄호 보정
+    """
+    s = _clean_json_text(text).strip()
+
+    # markdown 코드 블록 제거
+    if s.startswith("```"):
+        s = re.sub(r'^```(?:json)?\s*', '', s)
+        s = re.sub(r'\s*```\s*$', '', s)
+
+    # 후행 콤마 제거: ,} → } / ,] → ]
+    s = re.sub(r',\s*([}\]])', r'\1', s)
+
+    # 누락된 콤마 삽입: }\s*" → }," / ]\s*" → ]," / "\s*" → ","  (문자열 값 사이)
+    s = re.sub(r'(})\s*(")', r'\1,\2', s)
+    s = re.sub(r'(])\s*(")', r'\1,\2', s)
+    # "value"\n"key" 패턴 (줄바꿈으로 구분된 연속 문자열 — 배열 내부)
+    s = re.sub(r'(")\s*\n\s*(")', r'\1,\2', s)
+
+    # 닫히지 않은 괄호 보정
+    open_braces = s.count('{') - s.count('}')
+    open_brackets = s.count('[') - s.count(']')
+    if open_braces > 0:
+        s += '}' * open_braces
+    if open_brackets > 0:
+        s += ']' * open_brackets
+
+    return s
+
+
+def safe_parse_json(text: str) -> dict | list:
+    """JSON 파싱 시도 → 실패하면 repair 후 재시도.
+    모든 에이전트가 공통으로 사용하는 안전한 JSON 파서."""
+    cleaned = _clean_json_text(text)
+    # 1차: 그대로 파싱
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    # 2차: repair 후 파싱
+    repaired = repair_json(text)
+    try:
+        data = json.loads(repaired)
+        logger.warning("[JSON Repair] Successfully repaired malformed JSON from Gemini")
+        return data
+    except json.JSONDecodeError as e:
+        logger.error(f"[JSON Repair] Failed even after repair: {str(e)[:200]}")
+        raise
+
+
+async def generate_json(prompt: str, system_instruction: str = "", max_retries: int = 3) -> str:
+    """JSON 생성 + 파싱 검증. 파싱 실패 시 Gemini 재호출."""
     model = genai.GenerativeModel(
         "gemini-2.5-flash",
         system_instruction=system_instruction,
@@ -74,8 +132,26 @@ async def generate_json(prompt: str, system_instruction: str = "") -> str:
             response_mime_type="application/json",
         ),
     )
-    response = await _retry_generate(model, prompt)
-    return _clean_json_text(response.text)
+    last_error = None
+    for attempt in range(max_retries):
+        response = await _retry_generate(model, prompt)
+        raw_text = _clean_json_text(response.text)
+        # repair + 파싱 검증
+        try:
+            safe_parse_json(raw_text)
+            return raw_text  # 파싱 가능한 JSON 확인됨
+        except json.JSONDecodeError as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                logger.warning(
+                    f"[generate_json] JSON parse failed on attempt {attempt + 1}/{max_retries}, "
+                    f"retrying: {str(e)[:100]}"
+                )
+                await asyncio.sleep(2 * (attempt + 1))
+                continue
+    # 모든 재시도 실패 시, repair된 결과라도 반환 시도
+    logger.error(f"[generate_json] All {max_retries} attempts failed, returning last repaired text")
+    return repair_json(response.text)
 
 
 def _sync_embed_content(model_name: str, content: str, task_type: str, dims: int):
