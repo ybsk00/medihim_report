@@ -38,6 +38,8 @@ app.add_middleware(
         "https://*.vercel.app",
         "https://ipp0-medhim.web.app",
         "https://ipp0-medhim.firebaseapp.com",
+        "https://ippeo-medhim.web.app",
+        "https://ippeo-medhim.firebaseapp.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],

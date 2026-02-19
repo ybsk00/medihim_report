@@ -13,7 +13,7 @@
 ### 프론트엔드
 - **프레임워크**: Next.js 16+ (App Router)
 - **스타일링**: Tailwind CSS v4
-- **배포**: Firebase Hosting (https://ipp0-medhim.web.app)
+- **배포**: Firebase Hosting (https://ippeo-medhim.web.app)
 - **용도**: 관리자페이지(한국어) + 소비자 리포트 웹페이지(일본어)
 
 ### 백엔드
@@ -45,7 +45,7 @@ SUPABASE_URL=             # Supabase 프로젝트 URL
 SUPABASE_SERVICE_KEY=     # Supabase 서비스 키 (서버 전용)
 GMAIL_ADDRESS=            # Gmail 이메일 (ippo.medihim@gmail.com)
 GMAIL_APP_PASSWORD=       # Gmail 앱 비밀번호
-FRONTEND_URL=             # 프론트엔드 URL (https://ipp0-medhim.web.app)
+FRONTEND_URL=             # 프론트엔드 URL (https://ippeo-medhim.web.app)
 YOUTUBE_API_KEY=          # YouTube Data API v3
 ADMIN_SECRET=             # 관리자 JWT 시크릿
 NCBI_API_KEY=             # PubMed NCBI API 키
@@ -980,7 +980,7 @@ GET    /api/dashboard/stats        # 대시보드 통계 (총 상담, 미분류,
 
 ### Firebase Hosting (프론트엔드)
 
-- **URL**: https://ipp0-medhim.web.app
+- **URL**: https://ippeo-medhim.web.app
 - Next.js SSR은 Cloud Functions로 자동 배포됨
 - API 프록시: `firebase.json`의 rewrites 설정으로 `/api/*` → Cloud Run
 
