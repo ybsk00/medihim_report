@@ -1,5 +1,4 @@
-import json
-from services.gemini_client import generate_json
+from services.gemini_client import generate_json, safe_parse_json
 
 SYSTEM_INSTRUCTION = """あなたは医療通訳の専門家です。日本語の医療相談内容を韓国語に正確に翻訳してください。
 
@@ -20,7 +19,7 @@ JSON形式で返してください:
 {japanese_text}"""
 
     result = await generate_json(prompt, SYSTEM_INSTRUCTION)
-    data = json.loads(result)
+    data = safe_parse_json(result)
     if isinstance(data, list):
         data = data[0] if data else {}
     return data.get("translated_text", "")

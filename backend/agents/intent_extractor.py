@@ -1,5 +1,4 @@
-import json
-from services.gemini_client import generate_json
+from services.gemini_client import generate_json, safe_parse_json
 
 SYSTEM_INSTRUCTION = """당신은 의료 상담 분석 전문가입니다. 한국어로 번역된 상담 내용에서 환자의 의도를 구조화하여 추출해주세요.
 
@@ -29,7 +28,7 @@ JSON 형식으로 반환:
 {translated_text}"""
 
     result = await generate_json(prompt, SYSTEM_INSTRUCTION)
-    data = json.loads(result)
+    data = safe_parse_json(result)
     if isinstance(data, list):
         data = data[0] if data else {}
     return data

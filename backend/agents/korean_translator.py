@@ -1,5 +1,5 @@
 import json
-from services.gemini_client import generate_json
+from services.gemini_client import generate_json, safe_parse_json
 
 SYSTEM_INSTRUCTION = """당신은 일본어→한국어 의료 문서 번역 전문가입니다.
 일본어 리포트 JSON을 동일한 구조의 한국어 버전으로 번역하세요.
@@ -24,7 +24,7 @@ JSON 구조는 그대로 유지하고 텍스트만 한국어로 번역하세요.
 한국어 번역된 동일 구조의 JSON을 반환하세요."""
 
     result = await generate_json(prompt, SYSTEM_INSTRUCTION)
-    data = json.loads(result)
+    data = safe_parse_json(result)
     if isinstance(data, list):
         data = data[0] if data else {}
     return data

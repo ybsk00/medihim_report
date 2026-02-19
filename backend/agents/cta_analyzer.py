@@ -1,5 +1,4 @@
-import json
-from services.gemini_client import generate_json
+from services.gemini_client import generate_json, safe_parse_json
 
 SYSTEM_INSTRUCTION = """あなたはCRM分析の専門家です。カウンセリングの対話から以下を分析してください:
 
@@ -39,7 +38,7 @@ JSON形式で返してください:
 {translated_text}"""
 
     result = await generate_json(prompt, SYSTEM_INSTRUCTION)
-    data = json.loads(result)
+    data = safe_parse_json(result)
     if isinstance(data, list):
         data = data[0] if data else {}
     return data
