@@ -74,18 +74,32 @@ async def bulk_approve_reports(data: BulkApproveRequest):
 @router.get("/{report_id}")
 async def get_report(report_id: str):
     db = get_supabase()
+    # 1차: report_id로 조회
     result = (
         db.table("reports")
         .select("*, consultations(customer_name, customer_email, customer_line_id, classification, cta_level)")
         .eq("id", report_id)
-        .single()
+        .maybe_single()
         .execute()
     )
 
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Report not found")
+    if result.data:
+        return result.data
 
-    return result.data
+    # 2차: consultation_id로 조회 (상담 상세에서 리포트 보기 링크용)
+    result = (
+        db.table("reports")
+        .select("*, consultations(customer_name, customer_email, customer_line_id, classification, cta_level)")
+        .eq("consultation_id", report_id)
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+
+    if result.data and len(result.data) > 0:
+        return result.data[0]
+
+    raise HTTPException(status_code=404, detail="Report not found")
 
 
 @router.put("/{report_id}/approve")
