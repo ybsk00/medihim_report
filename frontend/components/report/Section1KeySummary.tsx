@@ -3,6 +3,8 @@ interface Section1KeySummaryProps {
 }
 
 export default function Section1KeySummary({ points }: Section1KeySummaryProps) {
+  const filtered = points.filter((p) => p && p.trim());
+  if (filtered.length === 0) return null;
   return (
     <section>
       <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
@@ -11,7 +13,7 @@ export default function Section1KeySummary({ points }: Section1KeySummaryProps) 
       </h3>
       <div className="bg-white rounded-xl p-5 card-shadow">
         <ul className="space-y-3">
-          {points.map((point, i) => (
+          {filtered.map((point, i) => (
             <li key={i} className="flex items-start gap-3">
               <span className="text-soft-blue text-base mt-0.5">
                 <img src="/heart-icon.png" alt="" className="w-4 h-4 inline-block" />
