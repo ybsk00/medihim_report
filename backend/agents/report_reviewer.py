@@ -9,13 +9,13 @@ SYSTEM_INSTRUCTION = """あなたはリポートの品質管理レビュアー�
 生成されたリポートを厳しくレビューしてください。
 
 レビュー基準:
-1. 9セクションが全て存在するか？（section1_key_summary〜section9_ippeo_message）
+1. 10セクションが全て存在するか？（section1_key_summary〜section10_ippeo_message）
 2. 各項目が1〜2文以内で簡潔に記述されているか？（過度な長文はFail）
 3. カウンセラーが言及していない医療情報が含まれていないか？
-4. 価格・費用情報が含まれていないか？（含まれていたら必ずFail）
+4. 費用情報: section8_cost_estimateのitemsに、相談で言及されていない金額が含まれていないか？（AIが創作した金額は即Fail）
 5. トーンが中立的・整理型か？（感情的な表現「ご安心ください」「一緒に」等はFail）
 6. セクション間で内容の重複・繰り返しがないか？
-7. section9のparagraphsに行動誘導5要素が含まれているか？
+7. section10のparagraphsに行動誘導5要素が含まれているか？
 8. 日本語の文法・表現は自然か？"""
 
 
@@ -37,13 +37,13 @@ async def review_report(
 {rag_context if rag_context else "なし"}
 
 == レビュー項目（8項目）==
-1. 9セクション全て存在確認（section1_key_summary, section2_cause_analysis, section3_recommendation, section4_recovery, section5_scar_info, section6_precautions, section7_risks, section8_visit_date, section9_ippeo_message）
+1. 10セクション全て存在確認（section1_key_summary, section2_cause_analysis, section3_recommendation, section4_recovery, section5_scar_info, section6_precautions, section7_risks, section8_cost_estimate, section9_visit_date, section10_ippeo_message）
 2. 簡潔さ: 各項目が1〜2文以内か？ 不必要な修飾語や冗長な表現はないか？
 3. 医療情報の正当性: 相談内容で言及されていない情報が含まれていないか？
-4. 価格・費用情報の有無（1つでも含まれていたら即Fail）
+4. 費用情報: section8_cost_estimateのitemsに相談で言及されていない金額がないか？（AIが創作した金額は即Fail。言及なしなら空配列が正しい）
 5. トーン: 中立的・整理型か？ 感情的表現（「ご安心ください」「温かく」「一緒に」等）が含まれていないか？
 6. 重複排除: セクション間で同じ内容が繰り返されていないか？
-7. section9のparagraphsに行動誘導5要素（大したことではないフレーミング、未来の自分可視化、感情報酬予告、防御心解除、タイミング刺激）が含まれているか？
+7. section10のparagraphsに行動誘導5要素（大したことではないフレーミング、未来の自分可視化、感情報酬予告、防御心解除、タイミング刺激）が含まれているか？
 8. 日本語の自然さ
 
 JSON形式で返してください:

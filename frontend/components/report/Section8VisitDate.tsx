@@ -4,8 +4,6 @@ interface Section8VisitDateProps {
 }
 
 export default function Section8VisitDate({ date, note }: Section8VisitDateProps) {
-  if (!date) return null;
-
   return (
     <section>
       <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
