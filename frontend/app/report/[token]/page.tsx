@@ -2,24 +2,28 @@
 
 import { useState, useEffect, useRef, use } from "react";
 import ReportHeader from "@/components/report/ReportHeader";
-import Section1Summary from "@/components/report/Section1Summary";
-import Section2Direction from "@/components/report/Section2Direction";
-import Section3Concerns from "@/components/report/Section3Concerns";
-import Section4Medical from "@/components/report/Section4Medical";
-import Section5Proposal from "@/components/report/Section5Proposal";
-import Section6Options from "@/components/report/Section6Options";
-import Section7Recovery from "@/components/report/Section7Recovery";
+import Section1KeySummary from "@/components/report/Section1KeySummary";
+import Section2CauseAnalysis from "@/components/report/Section2CauseAnalysis";
+import Section3Recommendation from "@/components/report/Section3Recommendation";
+import Section4Recovery from "@/components/report/Section4Recovery";
+import Section5ScarInfo from "@/components/report/Section5ScarInfo";
+import Section6Precautions from "@/components/report/Section6Precautions";
+import Section7Risks from "@/components/report/Section7Risks";
+import Section8VisitDate from "@/components/report/Section8VisitDate";
+import Section9IppeoMessage from "@/components/report/Section9IppeoMessage";
 import ReportFooter from "@/components/report/ReportFooter";
-import { publicReportAPI, type ReportData } from "@/lib/api";
+import { publicReportAPI, type ReportData, isV3Report } from "@/lib/api";
 
 const sectionNames = [
-  "まとめ",
-  "方向性",
-  "懸念点",
-  "医療説明",
+  "要点",
+  "原因",
   "提案",
-  "選択肢",
   "回復",
+  "傷跡",
+  "注意",
+  "リスク",
+  "来院",
+  "一言",
 ];
 
 export default function ConsumerReportPage({
@@ -30,7 +34,8 @@ export default function ConsumerReportPage({
   const { token } = use(params);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [report, setReport] = useState<ReportData | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [report, setReport] = useState<any>(null);
   const [activeSection, setActiveSection] = useState(0);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
 
@@ -39,7 +44,6 @@ export default function ConsumerReportPage({
       .get(token)
       .then((res) => {
         setReport(res.report_data);
-        // 열람 추적
         publicReportAPI.opened(token).catch(() => {});
       })
       .catch((err) => {
@@ -54,7 +58,6 @@ export default function ConsumerReportPage({
       .finally(() => setLoading(false));
   }, [token]);
 
-  // Intersection Observer로 현재 섹션 감지 + fade-in 애니메이션
   useEffect(() => {
     if (loading || !report) return;
 
@@ -77,7 +80,6 @@ export default function ConsumerReportPage({
       if (ref) observer.observe(ref);
     });
 
-    // 모바일 안전장치: 1초 후에도 보이지 않으면 전체 visible 처리
     const fallback = setTimeout(() => {
       sectionRefs.current.forEach((ref) => {
         if (ref) ref.classList.add("visible");
@@ -117,14 +119,27 @@ export default function ConsumerReportPage({
     );
   }
 
-  // V1/V2 호환: section2
-  const s2 = report.section2_direction;
-  const s2Props = s2.items
-    ? { items: s2.items, conclusion: s2.conclusion, interpretation: s2.interpretation }
-    : { desired: s2.desired, quote: s2.quote };
+  // V3 (9섹션) vs V2 (레거시 7섹션) 판별
+  const isV3 = isV3Report(report);
 
-  // V1/V2 호환: section3
-  const s3 = report.section3_concerns;
+  if (!isV3) {
+    // V2 레거시: 간단한 폴백 렌더링
+    return (
+      <div className="mobile-container font-[Noto_Sans_JP]">
+        <ReportHeader title={report.title} date={report.date} />
+        <div className="px-5 py-8">
+          <div className="bg-white rounded-xl p-5 card-shadow">
+            <p className="text-sm text-gray-500 text-center">
+              このリポートは旧形式です。再生成をお勧めします。
+            </p>
+          </div>
+        </div>
+        <ReportFooter />
+      </div>
+    );
+  }
+
+  const data = report as ReportData;
 
   return (
     <div className="mobile-container font-[Noto_Sans_JP]">
@@ -151,57 +166,60 @@ export default function ConsumerReportPage({
       </nav>
 
       {/* Header */}
-      <ReportHeader title={report.title} date={report.date} />
+      <ReportHeader title={data.title} date={data.date} />
 
       {/* Sections */}
       <div className="px-5 py-8 space-y-10">
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[0] = el; }}>
-          <Section1Summary
-            text={report.section1_summary.text}
-            points={report.section1_summary.points}
-          />
+          <Section1KeySummary points={data.section1_key_summary.points} />
         </div>
 
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[1] = el; }}>
-          <Section2Direction {...s2Props} />
+          <Section2CauseAnalysis
+            intro={data.section2_cause_analysis.intro}
+            causes={data.section2_cause_analysis.causes}
+            conclusion={data.section2_cause_analysis.conclusion}
+          />
         </div>
 
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[2] = el; }}>
-          <Section3Concerns
-            points={s3.points}
-            interpretation={s3.interpretation}
-            supplement={s3.supplement}
+          <Section3Recommendation
+            primary={data.section3_recommendation.primary}
+            secondary={data.section3_recommendation.secondary}
+            goal={data.section3_recommendation.goal}
           />
         </div>
 
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[3] = el; }}>
-          <Section4Medical
-            explanations={report.section4_medical.explanations}
-            footnote={report.section4_medical.footnote}
+          <Section4Recovery
+            timeline={data.section4_recovery.timeline}
+            note={data.section4_recovery.note}
           />
         </div>
 
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[4] = el; }}>
-          <Section5Proposal
-            steps={report.section5_proposal.steps}
-            context_note={report.section5_proposal.context_note}
-          />
+          <Section5ScarInfo points={data.section5_scar_info.points} />
         </div>
 
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[5] = el; }}>
-          <Section6Options
-            recommended={report.section6_options.recommended}
-            optional={report.section6_options.optional}
-            unnecessary={report.section6_options.unnecessary}
-            comment={report.section6_options.comment}
-          />
+          <Section6Precautions points={data.section6_precautions.points} />
         </div>
 
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[6] = el; }}>
-          <Section7Recovery
-            info={report.section7_recovery.info}
-            closing={report.section7_recovery.closing}
-            gentle_note={report.section7_recovery.gentle_note}
+          <Section7Risks points={data.section7_risks.points} />
+        </div>
+
+        <div className="fade-in-section" ref={(el) => { sectionRefs.current[7] = el; }}>
+          <Section8VisitDate
+            date={data.section8_visit_date.date}
+            note={data.section8_visit_date.note}
+          />
+        </div>
+
+        <div className="fade-in-section" ref={(el) => { sectionRefs.current[8] = el; }}>
+          <Section9IppeoMessage
+            paragraphs={data.section9_ippeo_message.paragraphs}
+            final_summary={data.section9_ippeo_message.final_summary}
           />
         </div>
       </div>

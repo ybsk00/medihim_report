@@ -2,19 +2,11 @@ export default function ReportFooter() {
   return (
     <footer className="bg-white border-t border-gray-100 p-8 text-center">
       <div className="flex justify-center items-center gap-2 mb-6">
-        <div className="bg-coral p-1 rounded">
-          <svg
-            className="w-4 h-4 text-white"
-            fill="none"
-            viewBox="0 0 48 48"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M6 6H42L36 24L42 42H6L12 24L6 6Z"
-              fill="currentColor"
-            />
-          </svg>
-        </div>
+        <img
+          src="/ippeo-logo.png"
+          alt="IPPEO"
+          className="w-6 h-6 rounded"
+        />
         <span className="text-sm font-bold text-text-dark">
           イッポ | 化粧相談リポート
         </span>

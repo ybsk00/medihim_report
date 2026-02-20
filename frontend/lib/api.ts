@@ -91,15 +91,37 @@ export interface Report {
   };
 }
 
-export interface ReportCitation {
+// V3 리포트 데이터 (9섹션 구조)
+export interface ReportData {
   title: string;
-  url: string;
-  stat?: string;
-  journal?: string;
-  year?: string;
+  date: string;
+  section1_key_summary: { points: string[] };
+  section2_cause_analysis: {
+    intro: string;
+    causes: string[];
+    conclusion: string;
+  };
+  section3_recommendation: {
+    primary: { label: string; items: string[] };
+    secondary: { label: string; items: string[] };
+    goal: string;
+  };
+  section4_recovery: {
+    timeline: { period: string; detail: string }[];
+    note?: string | null;
+  };
+  section5_scar_info: { points: string[] };
+  section6_precautions: { points: string[] };
+  section7_risks: { points: string[] };
+  section8_visit_date: { date: string | null; note?: string | null };
+  section9_ippeo_message: {
+    paragraphs: string[];
+    final_summary: string;
+  };
 }
 
-export interface ReportData {
+// V2 레거시 리포트 데이터 (기존 7섹션 구조 — 하위 호환용)
+export interface ReportDataV2 {
   title: string;
   date: string;
   section1_summary: { text: string; points: string[] };
@@ -107,7 +129,6 @@ export interface ReportData {
     items: { text: string; detail?: string }[];
     conclusion: string;
     interpretation?: string;
-    // V1 compat
     desired?: string[];
     quote?: string;
   };
@@ -121,8 +142,6 @@ export interface ReportData {
       number: number;
       title: string;
       text: string;
-      citation?: ReportCitation;
-      // V1 compat
       label?: string;
       icon?: string;
     }[];
@@ -145,11 +164,9 @@ export interface ReportData {
   };
 }
 
-/** V2 리포트인지 판별 (section4에 text 필드 존재 여부) */
-export function isV2Report(data: ReportData): boolean {
-  const exps = data.section4_medical?.explanations;
-  if (!exps || exps.length === 0) return false;
-  return typeof exps[0].text === "string" && exps[0].text.length > 0;
+/** V3 리포트인지 판별 (section1_key_summary 존재 여부) */
+export function isV3Report(data: ReportData | ReportDataV2): data is ReportData {
+  return "section1_key_summary" in data;
 }
 
 export interface DashboardStats {
