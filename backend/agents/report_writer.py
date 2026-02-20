@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from datetime import datetime, timezone, timedelta
 from services.gemini_client import generate_json, safe_parse_json
 
 logger = logging.getLogger(__name__)
@@ -213,5 +214,10 @@ async def write_report(
                 await asyncio.sleep(3)
             else:
                 raise ValueError(f"Report JSON parse failed after 2 attempts: {str(e)}")
+
+    # 리포트 작성일을 현재 일본 시간(JST) 기준으로 확정
+    jst = timezone(timedelta(hours=9))
+    now_jst = datetime.now(jst)
+    report["date"] = f"作成日：{now_jst.year}年{now_jst.month}月{now_jst.day}日"
 
     return report

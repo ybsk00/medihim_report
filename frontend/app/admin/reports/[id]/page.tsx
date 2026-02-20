@@ -418,11 +418,11 @@ export default function ReportDetailPage({
                       </section>
                     )}
 
-                    {/* Section 9 - 이뽀의 한마디 */}
+                    {/* Section 9 - 이뻐의 한마디 */}
                     <section>
                       <h3 className="text-base font-bold text-text-dark mb-3 flex items-center gap-2">
                         <span className="w-1 h-5 bg-coral rounded-full"></span>
-                        {lang === "ja" ? "イッポからの一言" : "이뽀의 한마디"}
+                        {lang === "ja" ? "イッポからの一言" : "이뻐의 한마디"}
                       </h3>
                       <div className="bg-coral/5 border border-coral/20 rounded-lg p-4 space-y-3">
                         {reportData.section9_ippeo_message.paragraphs.map((p: string, i: number) => (
