@@ -57,23 +57,26 @@ async def run_pipeline(consultation_id: str):
 
     try:
         # ========================================
-        # Step 1: 번역 (일본어 → 한국어)
+        # Step 1: 언어 감지 + 번역 (한국어면 스킵)
         # ========================================
         logger.info(f"[Pipeline:{consultation_id[:8]}] Step 1: Translation start")
         start = time.time()
-        translated_text = await translate_to_korean(original_text)
+        translated_text, input_lang = await translate_to_korean(original_text)
         duration = int((time.time() - start) * 1000)
-        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 1: Translation done ({duration}ms)")
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 1: Translation done ({duration}ms, lang={input_lang})")
 
-        await _log_agent(consultation_id, "translator", None, {"translated_text": translated_text[:200]}, duration, "success")
-        await _update_consultation(consultation_id, {"translated_text": translated_text})
+        await _log_agent(consultation_id, "translator", {"input_lang": input_lang}, {"translated_text": translated_text[:200]}, duration, "success")
+        await _update_consultation(consultation_id, {
+            "translated_text": translated_text,
+            "input_language": input_lang,
+        })
 
         # ========================================
         # Step 2: 화자 분리 + CTA 분석
         # ========================================
         logger.info(f"[Pipeline:{consultation_id[:8]}] Step 2: CTA analysis start")
         start = time.time()
-        cta_result = await analyze_cta(original_text, translated_text)
+        cta_result = await analyze_cta(original_text, translated_text, input_lang=input_lang)
         duration = int((time.time() - start) * 1000)
         logger.info(f"[Pipeline:{consultation_id[:8]}] Step 2: CTA done ({duration}ms)")
 
@@ -86,7 +89,7 @@ async def run_pipeline(consultation_id: str):
         })
 
         # ========================================
-        # Step 3: 의도 추출
+        # Step 3: 의도 추출 (한국어 텍스트 사용)
         # ========================================
         logger.info(f"[Pipeline:{consultation_id[:8]}] Step 3: Intent extraction start")
         start = time.time()
@@ -136,7 +139,11 @@ async def run_pipeline(consultation_id: str):
         # ========================================
         # Step 6~ : 리포트 생성 (분류 확정 후)
         # ========================================
-        await _generate_report(consultation_id, original_text, translated_text, intent, final_classification, customer_name)
+        await _generate_report(
+            consultation_id, original_text, translated_text,
+            intent, final_classification, customer_name,
+            input_lang=input_lang,
+        )
 
     except Exception as e:
         logger.error(f"[Pipeline:{consultation_id[:8]}] FAILED: {str(e)}", exc_info=True)
@@ -160,6 +167,7 @@ async def resume_pipeline(consultation_id: str, classification: str):
     if isinstance(intent, list):
         intent = intent[0] if intent else {}
     customer_name = consultation["customer_name"]
+    input_lang = consultation.get("input_language", "ja")
 
     # 수동 분류 업데이트
     await _update_consultation(consultation_id, {
@@ -169,7 +177,11 @@ async def resume_pipeline(consultation_id: str, classification: str):
     })
 
     try:
-        await _generate_report(consultation_id, original_text, translated_text, intent, classification, customer_name)
+        await _generate_report(
+            consultation_id, original_text, translated_text,
+            intent, classification, customer_name,
+            input_lang=input_lang,
+        )
     except Exception as e:
         await _update_consultation(consultation_id, {
             "status": "report_failed",
@@ -184,6 +196,7 @@ async def _generate_report(
     intent: dict,
     classification: str,
     customer_name: str,
+    input_lang: str = "ja",
 ):
     db = get_supabase()
 
@@ -216,7 +229,9 @@ async def _generate_report(
         logger.info(f"[Pipeline:{consultation_id[:8]}] Step 7: Report write attempt {attempt + 1}/{max_retries}")
         start = time.time()
         report_data = await write_report(
-            original_text, translated_text, intent, classification, rag_results, customer_name,
+            original_text, translated_text, intent, classification,
+            rag_results, customer_name,
+            input_lang=input_lang,
         )
         duration = int((time.time() - start) * 1000)
         logger.info(f"[Pipeline:{consultation_id[:8]}] Step 7: Report written ({duration}ms)")
@@ -290,6 +305,7 @@ async def regenerate_report(report_id: str, direction: str):
         intent = intent[0] if intent else {}
     classification = consultation["classification"]
     customer_name = consultation["customer_name"]
+    input_lang = consultation.get("input_language", "ja")
 
     await _update_consultation(consultation_id, {"status": "report_generating"})
 
@@ -321,6 +337,7 @@ async def regenerate_report(report_id: str, direction: str):
                 original_text, translated_text, intent, classification,
                 rag_results, customer_name,
                 admin_direction=direction,
+                input_lang=input_lang,
             )
             duration = int((time.time() - start) * 1000)
             await _log_agent(

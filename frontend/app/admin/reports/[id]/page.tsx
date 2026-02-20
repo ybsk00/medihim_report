@@ -233,7 +233,7 @@ export default function ReportDetailPage({
                 <div className="flex items-center gap-2 mb-3">
                   <img src="/ippeo-logo.png" alt="IPPEO" className="w-6 h-6 rounded" />
                   <h1 className="text-sm font-bold text-text-dark tracking-tight font-[Noto_Sans_JP]">
-                    イッポ | 化粧相談リポート
+                    IPPEO | 化粧相談リポート
                   </h1>
                 </div>
                 <h2 className="text-xl font-black text-text-dark leading-tight font-[Noto_Sans_JP]">
@@ -422,7 +422,7 @@ export default function ReportDetailPage({
                     <section>
                       <h3 className="text-base font-bold text-text-dark mb-3 flex items-center gap-2">
                         <span className="w-1 h-5 bg-coral rounded-full"></span>
-                        {lang === "ja" ? "イッポからの一言" : "이뻐의 한마디"}
+                        {lang === "ja" ? "IPPEOからの一言" : "이뻐의 한마디"}
                       </h3>
                       <div className="bg-coral/5 border border-coral/20 rounded-lg p-4 space-y-3">
                         {reportData.section9_ippeo_message.paragraphs.map((p: string, i: number) => (
@@ -447,7 +447,7 @@ export default function ReportDetailPage({
               <div className="bg-white border-t border-gray-100 p-6 text-center font-[Noto_Sans_JP]">
                 <div className="flex justify-center items-center gap-2 mb-4">
                   <img src="/ippeo-logo.png" alt="IPPEO" className="w-6 h-6 rounded" />
-                  <span className="text-sm font-bold text-text-dark">イッポ | 化粧相談リポート</span>
+                  <span className="text-sm font-bold text-text-dark">IPPEO | 化粧相談リポート</span>
                 </div>
                 <p className="text-[10px] text-gray-400 leading-relaxed">
                   本リポートはカウンセリング時の内容を元に作成されたものであり、確定的な診断や治療を保証するものではありません。

@@ -32,7 +32,7 @@
 - **벡터 검색**: Supabase pgvector
 
 ### 이메일
-- **Gmail SMTP** (ippo.medihim@gmail.com, App Password 인증)
+- **Gmail SMTP** (report.ippeo@gmail.com, App Password 인증)
 - `smtplib.SMTP_SSL("smtp.gmail.com", 465)` + `asyncio.to_thread` 비동기 발송
 
 ---
@@ -43,7 +43,7 @@
 GEMINI_API_KEY=           # Gemini API (LLM + 임베딩 모두)
 SUPABASE_URL=             # Supabase 프로젝트 URL
 SUPABASE_SERVICE_KEY=     # Supabase 서비스 키 (서버 전용)
-GMAIL_ADDRESS=            # Gmail 이메일 (ippo.medihim@gmail.com)
+GMAIL_ADDRESS=            # Gmail 이메일 (report.ippeo@gmail.com)
 GMAIL_APP_PASSWORD=       # Gmail 앱 비밀번호
 FRONTEND_URL=             # 프론트엔드 URL (https://ippeo-medhim.web.app)
 YOUTUBE_API_KEY=          # YouTube Data API v3
@@ -898,7 +898,7 @@ JSON 배열로 반환.
 [관리자 리포트 승인] → status: approved (이메일 발송 없음)
        │
        ├──→ [이메일 발송 버튼] → Gmail SMTP 발송
-       │    From: イッポ <ippo.medihim@gmail.com>
+       │    From: IPPEO <report.ippeo@gmail.com>
        │    To: 고객 이메일
        │    내용: 리포트 URL 포함
        │

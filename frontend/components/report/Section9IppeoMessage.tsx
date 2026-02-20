@@ -8,7 +8,7 @@ export default function Section9IppeoMessage({ paragraphs, final_summary }: Sect
     <section>
       <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
         <span className="block w-1 h-6 bg-coral rounded-full"></span>
-        イッポからの一言
+        IPPEOからの一言
       </h3>
       <div className="bg-coral/5 border border-coral/20 rounded-xl p-5 space-y-4">
         {paragraphs.map((p, i) => (

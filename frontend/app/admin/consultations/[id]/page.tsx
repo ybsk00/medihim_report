@@ -111,6 +111,7 @@ export default function ConsultationDetailPage({
   }
 
   const ctaBadge = data.cta_level ? CTA_BADGE[data.cta_level] : null;
+  const isKoreanInput = data.input_language === "ko";
 
   return (
     <>
@@ -262,30 +263,41 @@ export default function ConsultationDetailPage({
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm text-slate-500">CTA 판단 근거 (고객 발화):</p>
-                    <div className="flex bg-slate-100 rounded-md p-0.5">
-                      <button
-                        onClick={() => setCtaLang("ja")}
-                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                          ctaLang === "ja"
-                            ? "bg-white text-slate-800 shadow-sm"
-                            : "text-slate-500 hover:text-slate-700"
-                        }`}
-                      >
-                        일본어
-                      </button>
-                      <button
-                        onClick={() => setCtaLang("ko")}
-                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                          ctaLang === "ko"
-                            ? "bg-white text-slate-800 shadow-sm"
-                            : "text-slate-500 hover:text-slate-700"
-                        }`}
-                      >
-                        한국어
-                      </button>
-                    </div>
+                    {!isKoreanInput && (
+                      <div className="flex bg-slate-100 rounded-md p-0.5">
+                        <button
+                          onClick={() => setCtaLang("ja")}
+                          className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                            ctaLang === "ja"
+                              ? "bg-white text-slate-800 shadow-sm"
+                              : "text-slate-500 hover:text-slate-700"
+                          }`}
+                        >
+                          일본어
+                        </button>
+                        <button
+                          onClick={() => setCtaLang("ko")}
+                          className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                            ctaLang === "ko"
+                              ? "bg-white text-slate-800 shadow-sm"
+                              : "text-slate-500 hover:text-slate-700"
+                          }`}
+                        >
+                          한국어
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  {ctaLang === "ja" ? (
+                  {isKoreanInput ? (
+                    <ul className="space-y-1.5">
+                      {data.cta_signals.map((signal, i) => (
+                        <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
+                          <span className="text-slate-400 mt-0.5">•</span>
+                          <span className="italic">&ldquo;{signal}&rdquo;</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : ctaLang === "ja" ? (
                     <ul className="space-y-1.5">
                       {data.cta_signals.map((signal, i) => (
                         <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
@@ -327,60 +339,97 @@ export default function ConsultationDetailPage({
                 <span className="material-symbols-outlined text-primary">description</span>
                 상담 원문
               </h3>
-              <div className="flex bg-slate-100 rounded-lg p-0.5">
-                <button
-                  onClick={() => setLang("ja")}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    lang === "ja"
-                      ? "bg-white text-slate-800 shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  일본어 원문
-                </button>
-                <button
-                  onClick={() => setLang("ko")}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    lang === "ko"
-                      ? "bg-white text-slate-800 shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  한국어 번역
-                </button>
-              </div>
+              {isKoreanInput ? (
+                <span className="text-xs text-slate-400 font-medium px-3 py-1.5 bg-slate-50 rounded-lg">한국어 원문</span>
+              ) : (
+                <div className="flex bg-slate-100 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setLang("ja")}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      lang === "ja"
+                        ? "bg-white text-slate-800 shadow-sm"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    일본어 원문
+                  </button>
+                  <button
+                    onClick={() => setLang("ko")}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      lang === "ko"
+                        ? "bg-white text-slate-800 shadow-sm"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    한국어 번역
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           <div className="p-6 space-y-3 max-h-[500px] overflow-y-auto">
-            {lang === "ja" && (data.speaker_segments || []).length > 0 ? (
-              (data.speaker_segments || []).map((seg, i) => (
-                <div
-                  key={i}
-                  className={`flex gap-3 p-3 rounded-lg ${
-                    seg.speaker === "counselor"
-                      ? "bg-slate-50"
-                      : "bg-white border border-slate-100"
-                  }`}
-                >
-                  <span className="text-lg mt-0.5">
-                    {seg.speaker === "counselor" ? "👤" : "👩"}
-                  </span>
-                  <div>
-                    <span className="text-xs font-semibold text-slate-400 uppercase">
-                      {seg.speaker === "counselor" ? "상담사" : "고객"}
+            {isKoreanInput ? (
+              /* 한국어 입력: 화자 분리 있으면 화자 분리 표시, 없으면 원문 표시 */
+              (data.speaker_segments || []).length > 0 ? (
+                (data.speaker_segments || []).map((seg, i) => (
+                  <div
+                    key={i}
+                    className={`flex gap-3 p-3 rounded-lg ${
+                      seg.speaker === "counselor"
+                        ? "bg-slate-50"
+                        : "bg-white border border-slate-100"
+                    }`}
+                  >
+                    <span className="text-lg mt-0.5">
+                      {seg.speaker === "counselor" ? "👤" : "👩"}
                     </span>
-                    <p className="text-sm text-slate-700 mt-0.5">{seg.text}</p>
+                    <div>
+                      <span className="text-xs font-semibold text-slate-400 uppercase">
+                        {seg.speaker === "counselor" ? "상담사" : "고객"}
+                      </span>
+                      <p className="text-sm text-slate-700 mt-0.5">{seg.text}</p>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="py-4">
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                    {data.original_text}
+                  </p>
                 </div>
-              ))
+              )
             ) : (
-              <div className="py-4">
-                <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                  {lang === "ko"
-                    ? (data.translated_text || data.original_text)
-                    : data.original_text}
-                </p>
-              </div>
+              /* 일본어 입력: 기존 로직 (일본어/한국어 탭 전환) */
+              lang === "ja" && (data.speaker_segments || []).length > 0 ? (
+                (data.speaker_segments || []).map((seg, i) => (
+                  <div
+                    key={i}
+                    className={`flex gap-3 p-3 rounded-lg ${
+                      seg.speaker === "counselor"
+                        ? "bg-slate-50"
+                        : "bg-white border border-slate-100"
+                    }`}
+                  >
+                    <span className="text-lg mt-0.5">
+                      {seg.speaker === "counselor" ? "👤" : "👩"}
+                    </span>
+                    <div>
+                      <span className="text-xs font-semibold text-slate-400 uppercase">
+                        {seg.speaker === "counselor" ? "상담사" : "고객"}
+                      </span>
+                      <p className="text-sm text-slate-700 mt-0.5">{seg.text}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-4">
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                    {lang === "ko"
+                      ? (data.translated_text || data.original_text)
+                      : data.original_text}
+                  </p>
+                </div>
+              )
             )}
           </div>
           <div className="p-4 border-t border-slate-100 text-right">

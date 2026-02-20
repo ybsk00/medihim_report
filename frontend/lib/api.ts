@@ -60,6 +60,7 @@ export interface Consultation {
   } | null;
   cta_level: "hot" | "warm" | "cool" | null;
   cta_signals: string[] | null;
+  input_language: "ja" | "ko" | null;
   status: string;
   error_message: string | null;
   created_at: string;
