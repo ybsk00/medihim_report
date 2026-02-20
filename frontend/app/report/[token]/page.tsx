@@ -22,6 +22,7 @@ const sectionNames = [
   "傷跡",
   "注意",
   "リスク",
+  "費用",
   "来院",
   "一言",
 ];
@@ -209,17 +210,49 @@ export default function ConsumerReportPage({
           <Section7Risks points={data.section7_risks.points} />
         </div>
 
-        <div className="fade-in-section" ref={(el) => { sectionRefs.current[7] = el; }}>
+        {/* 비용 섹션 (V4, 상담에서 언급된 경우만) */}
+        {data.section8_cost_estimate && data.section8_cost_estimate.items && data.section8_cost_estimate.items.length > 0 && (
+          <div className="fade-in-section" ref={(el) => { sectionRefs.current[7] = el; }}>
+            <section>
+              <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
+                <span className="block w-1 h-6 bg-coral rounded-full"></span>
+                予想費用範囲
+              </h3>
+              <div className="bg-white rounded-xl p-5 card-shadow">
+                <ul className="space-y-2">
+                  {data.section8_cost_estimate.items.map((item: string, i: number) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="text-gray-400 mt-1 text-xs">&#x2022;</span>
+                      <span className="text-sm text-text-dark">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                {data.section8_cost_estimate.includes && (
+                  <p className="text-xs text-gray-500 mt-3 pt-2 border-t border-gray-100">
+                    含む: {data.section8_cost_estimate.includes}
+                  </p>
+                )}
+                {data.section8_cost_estimate.note && (
+                  <p className="text-xs text-gray-400 mt-1">{data.section8_cost_estimate.note}</p>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* 내원 예정일 (V4: section9, V3: section8) */}
+        <div className="fade-in-section" ref={(el) => { sectionRefs.current[8] = el; }}>
           <Section8VisitDate
-            date={data.section8_visit_date.date}
-            note={data.section8_visit_date.note}
+            date={(data.section9_visit_date?.date ?? data.section8_visit_date?.date) || "未定"}
+            note={data.section9_visit_date?.note ?? data.section8_visit_date?.note}
           />
         </div>
 
-        <div className="fade-in-section" ref={(el) => { sectionRefs.current[8] = el; }}>
+        {/* 이뻐 메시지 (V4: section10, V3: section9) */}
+        <div className="fade-in-section" ref={(el) => { sectionRefs.current[9] = el; }}>
           <Section9IppeoMessage
-            paragraphs={data.section9_ippeo_message.paragraphs}
-            final_summary={data.section9_ippeo_message.final_summary}
+            paragraphs={(data.section10_ippeo_message?.paragraphs ?? data.section9_ippeo_message?.paragraphs) || []}
+            final_summary={(data.section10_ippeo_message?.final_summary ?? data.section9_ippeo_message?.final_summary) || ""}
           />
         </div>
       </div>

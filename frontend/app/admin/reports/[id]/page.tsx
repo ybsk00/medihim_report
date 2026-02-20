@@ -402,36 +402,68 @@ export default function ReportDetailPage({
                       </div>
                     </section>
 
-                    {/* Section 8 - 내원 예정일 */}
-                    {reportData.section8_visit_date?.date && (
+                    {/* Section 8 - 예상 비용 범위 (V4, 상담에서 언급된 경우만) */}
+                    {reportData.section8_cost_estimate?.items?.length > 0 && (
                       <section>
                         <h3 className="text-base font-bold text-text-dark mb-3 flex items-center gap-2">
                           <span className="w-1 h-5 bg-coral rounded-full"></span>
-                          {lang === "ja" ? "ご来院予定日" : "내원 예정일"}
+                          {lang === "ja" ? "予想費用範囲" : "예상 비용 범위"}
                         </h3>
-                        <div className="bg-white rounded-lg p-4 card-shadow text-center">
-                          <p className="text-xl font-black text-text-dark">{reportData.section8_visit_date.date}</p>
-                          {reportData.section8_visit_date.note && (
-                            <p className="text-xs text-gray-500 mt-1">{reportData.section8_visit_date.note}</p>
+                        <div className="bg-white rounded-lg p-4 card-shadow">
+                          <ul className="space-y-2">
+                            {reportData.section8_cost_estimate.items.map((item: string, i: number) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="text-gray-400 mt-1 text-xs">&#x2022;</span>
+                                <span className="text-sm text-text-dark">{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          {reportData.section8_cost_estimate.includes && (
+                            <p className="text-xs text-gray-500 mt-3 pt-2 border-t border-gray-100">
+                              {lang === "ja" ? "含む" : "포함"}: {reportData.section8_cost_estimate.includes}
+                            </p>
+                          )}
+                          {reportData.section8_cost_estimate.note && (
+                            <p className="text-xs text-gray-400 mt-1">{reportData.section8_cost_estimate.note}</p>
                           )}
                         </div>
                       </section>
                     )}
 
-                    {/* Section 9 - 이뻐의 한마디 */}
+                    {/* Section 9 - 내원 예정일 (V4: section9, V3: section8) */}
+                    <section>
+                      <h3 className="text-base font-bold text-text-dark mb-3 flex items-center gap-2">
+                        <span className="w-1 h-5 bg-coral rounded-full"></span>
+                        {lang === "ja" ? "ご来院予定日" : "내원 예정일"}
+                      </h3>
+                      <div className="bg-white rounded-lg p-4 card-shadow text-center">
+                        <p className="text-xl font-black text-text-dark">
+                          {(reportData.section9_visit_date?.date ?? reportData.section8_visit_date?.date) || (lang === "ja" ? "未定" : "미정")}
+                        </p>
+                        {(reportData.section9_visit_date?.note ?? reportData.section8_visit_date?.note) && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {reportData.section9_visit_date?.note ?? reportData.section8_visit_date?.note}
+                          </p>
+                        )}
+                      </div>
+                    </section>
+
+                    {/* Section 10 - 이뻐의 한마디 (V4: section10, V3: section9) */}
                     <section>
                       <h3 className="text-base font-bold text-text-dark mb-3 flex items-center gap-2">
                         <span className="w-1 h-5 bg-coral rounded-full"></span>
                         {lang === "ja" ? "IPPEOからの一言" : "이뻐의 한마디"}
                       </h3>
                       <div className="bg-coral/5 border border-coral/20 rounded-lg p-4 space-y-3">
-                        {reportData.section9_ippeo_message.paragraphs.map((p: string, i: number) => (
+                        {(reportData.section10_ippeo_message?.paragraphs ?? reportData.section9_ippeo_message?.paragraphs ?? []).map((p: string, i: number) => (
                           <p key={i} className="text-sm text-text-dark leading-relaxed">{p}</p>
                         ))}
                       </div>
                       <div className="mt-4 bg-white rounded-lg p-4 card-shadow border-l-4 border-coral">
                         <p className="text-xs font-bold text-coral mb-1">&#x1F4CC; {lang === "ja" ? "最終整理" : "최종 정리"}</p>
-                        <p className="text-sm font-medium text-text-dark leading-relaxed">{reportData.section9_ippeo_message.final_summary}</p>
+                        <p className="text-sm font-medium text-text-dark leading-relaxed">
+                          {(reportData.section10_ippeo_message?.final_summary ?? reportData.section9_ippeo_message?.final_summary) || ""}
+                        </p>
                       </div>
                     </section>
                   </>

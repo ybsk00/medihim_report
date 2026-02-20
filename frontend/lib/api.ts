@@ -92,7 +92,8 @@ export interface Report {
   };
 }
 
-// V3 리포트 데이터 (9섹션 구조)
+// 리포트 데이터 (V3 9섹션 + V4 10섹션 호환)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ReportData {
   title: string;
   date: string;
@@ -114,11 +115,25 @@ export interface ReportData {
   section5_scar_info: { points: string[] };
   section6_precautions: { points: string[] };
   section7_risks: { points: string[] };
-  section8_visit_date: { date: string | null; note?: string | null };
-  section9_ippeo_message: {
+  // V4 10섹션: 비용 + 내원일 + 이뻐 메시지
+  section8_cost_estimate?: {
+    items: string[];
+    includes?: string | null;
+    note?: string | null;
+  };
+  section9_visit_date?: { date: string | null; note?: string | null };
+  section10_ippeo_message?: {
     paragraphs: string[];
     final_summary: string;
   };
+  // V3 9섹션 하위 호환 (키 이름이 다름)
+  section8_visit_date?: { date: string | null; note?: string | null };
+  section9_ippeo_message?: {
+    paragraphs: string[];
+    final_summary: string;
+  };
+  // 추가 속성 허용
+  [key: string]: unknown;
 }
 
 // V2 레거시 리포트 데이터 (기존 7섹션 구조 — 하위 호환용)
