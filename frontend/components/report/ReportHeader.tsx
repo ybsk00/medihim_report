@@ -13,7 +13,7 @@ export default function ReportHeader({ title, date }: ReportHeaderProps) {
           className="w-6 h-6 rounded"
         />
         <h1 className="text-sm font-bold text-text-dark tracking-tight">
-          IPPEO | 化粧相談リポート
+          IPPEO | オンライン相談リポート
         </h1>
       </div>
       <div>

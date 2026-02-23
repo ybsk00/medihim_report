@@ -8,7 +8,7 @@ export default function ReportFooter() {
           className="w-6 h-6 rounded"
         />
         <span className="text-sm font-bold text-text-dark">
-          IPPEO | 化粧相談リポート
+          IPPEO | オンライン相談リポート
         </span>
       </div>
       <a
