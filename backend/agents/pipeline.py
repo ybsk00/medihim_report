@@ -128,10 +128,15 @@ async def run_pipeline(consultation_id: str):
         logger.info(f"[Pipeline:{consultation_id[:8]}] Step 2: CTA done ({duration}ms)")
 
         await _log_agent(consultation_id, "cta_analyzer", None, cta_result, duration, "success")
+        # CTA 레벨 소문자 정규화 (LLM이 "Hot"/"Warm" 등 대문자로 반환하는 경우 대비)
+        raw_cta = cta_result.get("cta_level", "cool")
+        cta_level = raw_cta.lower() if isinstance(raw_cta, str) else "cool"
+        if cta_level not in ("hot", "warm", "cool"):
+            cta_level = "cool"
         await _update_consultation(consultation_id, {
             "speaker_segments": cta_result.get("speaker_segments"),
             "customer_utterances": cta_result.get("customer_utterances", ""),
-            "cta_level": cta_result.get("cta_level", "cool"),
+            "cta_level": cta_level,
             "cta_signals": cta_result.get("cta_signals"),
         })
 

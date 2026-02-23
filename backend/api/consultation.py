@@ -87,7 +87,7 @@ async def generate_reports(data: GenerateReportsRequest, background_tasks: Backg
     if missing:
         raise HTTPException(status_code=404, detail=f"찾을 수 없는 상담 ID: {list(missing)}")
 
-    valid_statuses = {"registered", "report_failed"}
+    valid_statuses = {"registered", "report_failed", "processing", "report_generating"}
     triggered_ids = []
     skipped = []
 
