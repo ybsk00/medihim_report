@@ -20,6 +20,30 @@ interface CsvMessage {
 }
 
 /**
+ * 파일 인코딩 자동 감지: UTF-8 → CP949(EUC-KR) 순서로 시도
+ * Excel(한국어 Windows)이 CSV를 CP949로 저장하는 문제 대응
+ */
+function decodeFileBuffer(buffer: ArrayBuffer): { text: string; encoding: string } {
+  const bytes = new Uint8Array(buffer);
+
+  // UTF-8 BOM 확인
+  if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    return { text: new TextDecoder("utf-8").decode(buffer), encoding: "UTF-8 (BOM)" };
+  }
+
+  // UTF-8 디코딩 시도 (fatal: true → 실패 시 예외)
+  try {
+    const decoder = new TextDecoder("utf-8", { fatal: true });
+    const text = decoder.decode(buffer);
+    return { text, encoding: "UTF-8" };
+  } catch {
+    // UTF-8 실패 → CP949/EUC-KR로 시도 (WHATWG 표준에서 euc-kr = Windows-949)
+    const text = new TextDecoder("euc-kr").decode(buffer);
+    return { text, encoding: "CP949/EUC-KR" };
+  }
+}
+
+/**
  * RFC 4180 준수 CSV 파서: 멀티라인 쌍따옴표 필드 지원
  * 전체 텍스트를 받아 행 배열(각 행은 필드 배열)을 반환
  */
@@ -98,10 +122,12 @@ export default function NewConsultationPage() {
     setFileName(file.name);
     const reader = new FileReader();
     reader.onload = (e) => {
-      const text = e.target?.result as string;
+      const buffer = e.target?.result as ArrayBuffer;
+      const { text, encoding } = decodeFileBuffer(buffer);
+      console.log(`[STT] File "${file.name}" decoded as ${encoding}`);
       setFormData((prev) => ({ ...prev, sttText: text }));
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
   };
 
   // CSV 경고 상태
@@ -172,13 +198,19 @@ export default function NewConsultationPage() {
     setCsvWarnings(warnings);
   };
 
+  // CSV 감지된 인코딩 상태
+  const [detectedEncoding, setDetectedEncoding] = useState("");
+
   const handleCsvFileChange = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      const text = e.target?.result as string;
+      const buffer = e.target?.result as ArrayBuffer;
+      const { text, encoding } = decodeFileBuffer(buffer);
+      console.log(`[CSV] File "${file.name}" decoded as ${encoding}`);
+      setDetectedEncoding(encoding);
       handleCsvParse(text, file.name);
     };
-    reader.readAsText(file, "UTF-8");
+    reader.readAsArrayBuffer(file);
   };
 
   // STT 모드 제출
@@ -429,7 +461,7 @@ export default function NewConsultationPage() {
                 <code className="bg-blue-100 px-1 rounded">customer_line_id</code>
               </p>
               <p className="text-xs text-blue-600">
-                UTF-8 인코딩, 쉼표 구분. 멀티라인 텍스트는 쌍따옴표로 감싸주세요. 최대 100건.
+                UTF-8 / CP949(Excel) 인코딩 자동 감지. 쉼표 구분. 멀티라인 텍스트는 쌍따옴표로 감싸주세요. 최대 100건.
               </p>
             </div>
 
@@ -465,6 +497,7 @@ export default function NewConsultationPage() {
                   <p className="text-xs text-slate-400 mt-1">
                     {csvRows.length}건 파싱 완료
                     {csvErrors.length > 0 && `, ${csvErrors.length}건 오류`}
+                    {detectedEncoding && ` (${detectedEncoding})`}
                   </p>
                 </div>
               ) : (

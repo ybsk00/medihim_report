@@ -22,8 +22,18 @@ CTA 판정 기준:
 
 
 async def analyze_cta(
-    original_text: str, translated_text: str, input_lang: str = "ja"
+    original_text: str,
+    translated_text: str,
+    input_lang: str = "ja",
+    pre_extracted_segments: list[dict] | None = None,
+    pre_customer_utterances: str | None = None,
 ) -> dict:
+    # 전처리에서 이미 화자 분리가 된 경우 → CTA 분석만 수행
+    if pre_extracted_segments and pre_customer_utterances:
+        return await _analyze_cta_only(
+            pre_extracted_segments, pre_customer_utterances, input_lang
+        )
+
     if input_lang == "ko":
         # 한국어 입력: 한국어 대화를 직접 분석
         prompt = f"""다음 한국어 상담 대화를 분석해주세요.
@@ -76,4 +86,40 @@ JSON形式で返してください:
     data = safe_parse_json(result)
     if isinstance(data, list):
         data = data[0] if data else {}
+    return data
+
+
+async def _analyze_cta_only(
+    segments: list[dict],
+    customer_utterances: str,
+    input_lang: str,
+) -> dict:
+    """전처리에서 화자 분리 완료 → CTA 레벨만 LLM으로 분석."""
+    prompt = f"""다음은 의료 상담에서 추출된 고객(환자) 발화 목록입니다.
+이 발화들만 분석하여 고객의 구매 의향(CTA) 레벨을 판정해주세요.
+
+CTA 판정 기준:
+- Hot: 구체적인 일정/비용 질문 (예: "7월에 가능한가요?", "비용이 얼마?", "회복 기간은?")
+- Warm: 관심 있지만 비교/고민 중 (예: "다른 병원에서는~", "좀 더 알아보고", "가족과 상의")
+- Cool: 정보 탐색 단계 (예: "좀 궁금해서", "아직 구체적으로는", "언젠가 기회가 되면")
+
+고객 발화:
+{customer_utterances}
+
+JSON 형식으로 반환:
+{{
+    "cta_level": "hot" 또는 "warm" 또는 "cool",
+    "cta_signals": ["판단 근거가 되는 고객 발화1", "판단 근거가 되는 고객 발화2"]
+}}"""
+
+    result = await generate_json(prompt, SYSTEM_INSTRUCTION_KO)
+    data = safe_parse_json(result)
+    if isinstance(data, list):
+        data = data[0] if data else {}
+
+    # 전처리에서 추출한 세그먼트 병합
+    data["speaker_segments"] = segments
+    data["customer_utterances"] = customer_utterances
+    if "translated_segments" not in data:
+        data["translated_segments"] = segments
     return data

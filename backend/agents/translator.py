@@ -14,14 +14,32 @@ SYSTEM_INSTRUCTION = """あなたは医療通訳の専門家です。日本語�
 
 
 def detect_language(text: str) -> str:
-    """히라가나/가타카나 존재 여부로 일본어 감지. 없으면 한국어로 간주."""
+    """일본어/한국어 문자 비율로 언어 감지.
+    일본어(히라가나+가타카나) 비율이 30% 이상이면 일본어, 아니면 한국어.
+    한일 혼합 대화(의사가 가끔 일본어 사용)를 정확히 판별."""
     japanese_chars = sum(
         1 for c in text
         if ('\u3040' <= c <= '\u309F')   # 히라가나
         or ('\u30A0' <= c <= '\u30FF')   # 가타카나
     )
-    result = "ja" if japanese_chars >= 10 else "ko"
-    logger.info(f"[Language] Detected '{result}' (japanese_chars={japanese_chars})")
+    korean_chars = sum(
+        1 for c in text
+        if ('\uAC00' <= c <= '\uD7AF')   # 완성형 한글
+        or ('\u1100' <= c <= '\u11FF')   # 한글 자모
+        or ('\u3130' <= c <= '\u318F')   # 호환용 한글 자모
+    )
+    total_cjk = japanese_chars + korean_chars
+    if total_cjk == 0:
+        result = "ko"  # CJK 문자 없으면 기본 한국어
+    else:
+        ja_ratio = japanese_chars / total_cjk
+        result = "ja" if ja_ratio > 0.3 else "ko"
+
+    logger.info(
+        f"[Language] Detected '{result}' "
+        f"(ja={japanese_chars}, ko={korean_chars}, ratio={japanese_chars}/{total_cjk}="
+        f"{(japanese_chars/total_cjk*100 if total_cjk else 0):.1f}%)"
+    )
     return result
 
 

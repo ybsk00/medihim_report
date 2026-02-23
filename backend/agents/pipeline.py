@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from services.supabase_client import get_supabase
+from agents.text_refiner import preprocess_stt_dialog, refine_stt_text
 from agents.translator import translate_to_korean
 from agents.cta_analyzer import analyze_cta
 from agents.intent_extractor import extract_intent
@@ -57,11 +58,34 @@ async def run_pipeline(consultation_id: str):
 
     try:
         # ========================================
+        # Step 0: STT 텍스트 전처리 (규칙 기반, LLM 불필요)
+        # ========================================
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 0: Preprocessing start")
+        start = time.time()
+        preprocess_result = preprocess_stt_dialog(original_text)
+        duration = int((time.time() - start) * 1000)
+
+        has_labels = preprocess_result["has_speaker_labels"]
+        pre_segments = preprocess_result.get("speaker_segments")
+        pre_customer = preprocess_result.get("customer_utterances")
+        cleaned_text = preprocess_result["cleaned_text"]
+        logger.info(
+            f"[Pipeline:{consultation_id[:8]}] Step 0: Preprocess done ({duration}ms, "
+            f"labels={has_labels}, {len(original_text)}→{len(cleaned_text)} chars)"
+        )
+        await _log_agent(
+            consultation_id, "preprocessor",
+            {"original_len": len(original_text)},
+            {"cleaned_len": len(cleaned_text), "has_labels": has_labels},
+            duration, "success",
+        )
+
+        # ========================================
         # Step 1: 언어 감지 + 번역 (한국어면 스킵)
         # ========================================
         logger.info(f"[Pipeline:{consultation_id[:8]}] Step 1: Translation start")
         start = time.time()
-        translated_text, input_lang = await translate_to_korean(original_text)
+        translated_text, input_lang = await translate_to_korean(cleaned_text)
         duration = int((time.time() - start) * 1000)
         logger.info(f"[Pipeline:{consultation_id[:8]}] Step 1: Translation done ({duration}ms, lang={input_lang})")
 
@@ -72,11 +96,34 @@ async def run_pipeline(consultation_id: str):
         })
 
         # ========================================
+        # Step 1.5: STT 텍스트 정제 (LLM 기반, 15000자 이하만)
+        # ========================================
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 1.5: STT refinement start")
+        start = time.time()
+        refined_text = await refine_stt_text(translated_text)
+        duration = int((time.time() - start) * 1000)
+        logger.info(f"[Pipeline:{consultation_id[:8]}] Step 1.5: Refinement done ({duration}ms)")
+        await _log_agent(
+            consultation_id, "text_refiner",
+            {"input_len": len(translated_text)},
+            {"output_len": len(refined_text), "skipped": refined_text == translated_text},
+            duration, "success",
+        )
+
+        # 정제된 텍스트를 이후 단계에서 사용
+        text_for_analysis = refined_text
+
+        # ========================================
         # Step 2: 화자 분리 + CTA 분석
         # ========================================
         logger.info(f"[Pipeline:{consultation_id[:8]}] Step 2: CTA analysis start")
         start = time.time()
-        cta_result = await analyze_cta(original_text, translated_text, input_lang=input_lang)
+        cta_result = await analyze_cta(
+            cleaned_text, text_for_analysis,
+            input_lang=input_lang,
+            pre_extracted_segments=pre_segments,
+            pre_customer_utterances=pre_customer,
+        )
         duration = int((time.time() - start) * 1000)
         logger.info(f"[Pipeline:{consultation_id[:8]}] Step 2: CTA done ({duration}ms)")
 
@@ -89,11 +136,11 @@ async def run_pipeline(consultation_id: str):
         })
 
         # ========================================
-        # Step 3: 의도 추출 (한국어 텍스트 사용)
+        # Step 3: 의도 추출 (정제된 한국어 텍스트 사용)
         # ========================================
         logger.info(f"[Pipeline:{consultation_id[:8]}] Step 3: Intent extraction start")
         start = time.time()
-        intent = await extract_intent(translated_text)
+        intent = await extract_intent(text_for_analysis)
         duration = int((time.time() - start) * 1000)
         logger.info(f"[Pipeline:{consultation_id[:8]}] Step 3: Intent done ({duration}ms)")
 
@@ -140,7 +187,7 @@ async def run_pipeline(consultation_id: str):
         # Step 6~ : 리포트 생성 (분류 확정 후)
         # ========================================
         await _generate_report(
-            consultation_id, original_text, translated_text,
+            consultation_id, cleaned_text, text_for_analysis,
             intent, final_classification, customer_name,
             input_lang=input_lang,
         )
