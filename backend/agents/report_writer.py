@@ -46,6 +46,7 @@ async def write_report(
     customer_name: str,
     admin_direction: str | None = None,
     input_lang: str = "ja",
+    hospital_mentions: list[dict] | None = None,
 ) -> dict:
     # RAG 컨텍스트를 정리 (내용 검증용)
     rag_context = ""
@@ -61,6 +62,23 @@ async def write_report(
         category_note = "整形外科の相談です。構造的なアプローチを中心に記述してください。"
     else:
         category_note = "皮膚科の相談です。治療プロトコルを中心に記述してください。"
+
+    # 병원 비교 정보 섹션 (있을 때만)
+    hospital_section = ""
+    if hospital_mentions:
+        hospital_section = "\n== 相談で言及された病院・クリニック情報 ==\n"
+        for i, h in enumerate(hospital_mentions, 1):
+            hospital_section += f"\n【病院{i}】{h.get('name', '不明')}\n"
+            if h.get("procedures"):
+                hospital_section += f"  施術: {', '.join(h['procedures'])}\n"
+            if h.get("advantages"):
+                hospital_section += f"  特長: {', '.join(h['advantages'])}\n"
+            if h.get("price_info"):
+                hospital_section += f"  費用: {h['price_info']}\n"
+            if h.get("recovery_info"):
+                hospital_section += f"  回復期間: {h['recovery_info']}\n"
+            if h.get("other_details"):
+                hospital_section += f"  その他: {h['other_details']}\n"
 
     # 관리자 재생성 지시 섹션 (있을 때만)
     admin_direction_section = ""
@@ -104,7 +122,7 @@ async def write_report(
 
 == 参考資料（内容検証用、直接引用しない）==
 {rag_context}
-{admin_direction_section}
+{hospital_section}{admin_direction_section}
 == 出力JSON形式 ==
 {{
     "title": "{display_name}様 OOのご相談リポート",
@@ -205,7 +223,20 @@ async def write_report(
             "【行動促進】相談内容から読み取れるお客様の意欲度に合わせた、次のステップへの自然な誘導1文。"
         ],
         "final_summary": "最終整理（2文以内。お客様の目標 + 推奨方向 + スケジュール提案を簡潔に）"
-    }}
+    }}{f''',
+
+    "hospital_comparison": {{
+        "hospitals": [
+            {{
+                "name": "病院名（相談で言及された名称をそのまま使用）",
+                "procedures": "対象施術（簡潔に）",
+                "features": "特長・強み（1文）",
+                "price": "費用情報（相談で言及された金額のみ。なければnull）",
+                "recovery": "回復期間（相談で言及された内容のみ。なければnull）"
+            }}
+        ],
+        "note": "比較に関する補足（1文。例: 詳細は来院相談時にご確認ください。）"
+    }}''' if hospital_mentions else ''}
 }}
 
 重要ルール:
@@ -218,7 +249,8 @@ async def write_report(
 - section9_visit_date: 相談で日付が言及されていなければdateは「未定」と記載すること
 - pointsの配列に空文字列("")を入れないこと。内容がある項目のみ含めること
 - 全10セクション必須
-- section10_ippeo_message: 各paragraphは必ずこのお客様の相談内容に固有の表現で作成すること。テンプレート的な汎用文（「魅力を引き出す」「鏡を見るたびに」「旅行で写真」等）の使い回しは禁止。お客様が相談で述べた具体的な悩み・希望・施術名に言及して、この方だけに向けたメッセージにすること"""
+- section10_ippeo_message: 各paragraphは必ずこのお客様の相談内容に固有の表現で作成すること。テンプレート的な汎用文（「魅力を引き出す」「鏡を見るたびに」「旅行で写真」等）の使い回しは禁止。お客様が相談で述べた具体的な悩み・希望・施術名に言及して、この方だけに向けたメッセージにすること
+- hospital_comparison: 相談で病院名が言及された場合のみ作成すること。病院情報が提供されていない場合はこのキー自体を省略すること。各病院の情報は相談で実際に言及された内容のみ記載し、AIが推測・創作してはならない"""
 
     # JSON 파싱 재시도 (최대 2회)
     report = None
