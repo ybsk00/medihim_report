@@ -67,9 +67,13 @@ export interface Consultation {
   updated_at: string;
 }
 
+// [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
+export type ReportType = "r1" | "r2" | "r3" | "r4";
+
 export interface Report {
   id: string;
   consultation_id: string;
+  report_type?: ReportType;
   report_data: ReportData;
   report_data_ko: ReportData | null;
   rag_context: unknown[] | null;
@@ -91,6 +95,10 @@ export interface Report {
     cta_level?: string;
   };
 }
+
+// [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
+// R1ReportData, R2ReportData, R3ReportData 인터페이스는
+// frontend/components/report-internal/ 파일 참조
 
 // 리포트 데이터 (V3 9섹션 + V4 10섹션 호환)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -296,6 +304,9 @@ export const consultationAPI = {
 export const reportAPI = {
   list: () => fetchAPI<{ data: Report[] }>("/reports"),
   get: (id: string) => fetchAPI<Report>(`/reports/${id}`),
+  // [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
+  // listByConsultation: (consultationId: string) =>
+  //   fetchAPI<{ data: Report[] }>(`/reports/by-consultation/${consultationId}`),
   approve: (id: string) =>
     fetchAPI<{ id: string; status: string; access_token: string }>(
       `/reports/${id}/approve`,

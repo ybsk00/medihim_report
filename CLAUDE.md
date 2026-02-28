@@ -3,8 +3,18 @@
 ## 프로젝트 개요
 
 일본 의료관광 플랫폼 「이뽀(이뽀)」의 AI 상담 리포트 시스템.
-일본인 소비자가 한국 피부과/성형외과에 대해 상담한 내용(일본어 STT/다이얼로그)을 AI가 분석하여
-구조화된 일본어 리포트를 자동 생성하고, 관리자 검토 후 이메일/URL로 소비자에게 발송한다.
+일본인 소비자가 한국 피부과/성형외과에 대해 상담한 내용(일본어 또는 한국어 STT/다이얼로그)을 AI가 분석하여
+구조화된 리포트를 자동 생성하고, 관리자 검토 후 이메일/URL로 소비자에게 발송한다.
+
+### 다중 리포트 타입 시스템 (R1~R4)
+
+상담 1건에서 최대 4종류의 리포트를 생성하는 아키텍처:
+- **R1 (의사용, 한국어)**: 상담 전 의사 브리핑용. 7섹션. `[현재 비활성화]`
+- **R2 (상담실장용, 한국어)**: R1 기반 운영 준비(리소스/비용/일정). 5섹션. `[현재 비활성화]`
+- **R3 (경영진용, 한국어)**: R1+R2 통합 경영 분석(마케팅/의료/환자관리 3기둥). 4섹션. `[현재 비활성화]`
+- **R4 (고객용, 일본어)**: 소비자 발송용 리포트. 10섹션. `[현재 운영 중]`
+
+> ⚠️ R1~R3는 코드 구현 완료 상태이나 `[R1-R3 비활성화]` 주석으로 잠금. R4 테스트 완료 후 활성화 예정.
 
 ---
 
@@ -89,6 +99,10 @@ ippeo/
 │   │   │   ├── ReportReviewPanel.tsx
 │   │   │   ├── ShareButton.tsx       # URL 공유 (링크 복사 + LINE)
 │   │   │   └── CTABadge.tsx
+│   │   ├── report-internal/     # 내부용 리포트 컴포넌트 [R1-R3 비활성화]
+│   │   │   ├── R1DoctorReport.tsx     # 의사용 리포트 렌더링 (보라색 테마)
+│   │   │   ├── R2DirectorReport.tsx   # 상담실장용 리포트 렌더링 (인디고 테마)
+│   │   │   └── R3ExecutiveReport.tsx  # 경영진용 리포트 렌더링 (오렌지 테마)
 │   │   └── report/              # 소비자 리포트 컴포넌트
 │   │       ├── ReportHeader.tsx
 │   │       ├── Section1Summary.tsx
@@ -117,14 +131,17 @@ ippeo/
 │   │   ├── classify.py          # 수동 분류 API
 │   │   └── youtube.py           # YouTube 자막 수집 API
 │   ├── agents/
-│   │   ├── pipeline.py          # 전체 파이프라인 오케스트레이터
+│   │   ├── pipeline.py          # 전체 파이프라인 오케스트레이터 (R1~R4 멀티타입)
 │   │   ├── translator.py        # 번역 에이전트 (일→한)
 │   │   ├── intent_extractor.py  # 의도 추출 에이전트
 │   │   ├── classifier.py        # 분류 에이전트
 │   │   ├── validator.py         # 검증 에이전트
 │   │   ├── rag_agent.py         # RAG 에이전트 (과별 벡터DB 검색)
-│   │   ├── report_writer.py     # 리포트 작성 에이전트
-│   │   ├── report_reviewer.py   # 검토 에이전트 (max 3회)
+│   │   ├── report_writer.py     # R4 리포트 작성 에이전트 (고객용, 일본어 10섹션)
+│   │   ├── r1_doctor_writer.py  # R1 리포트 작성 에이전트 (의사용, 한국어 7섹션) [비활성화]
+│   │   ├── r2_director_writer.py # R2 리포트 작성 에이전트 (상담실장용, 한국어 5섹션) [비활성화]
+│   │   ├── r3_executive_writer.py # R3 리포트 작성 에이전트 (경영진용, 한국어 4섹션) [비활성화]
+│   │   ├── report_reviewer.py   # 검토 에이전트 (R1~R4 타입별 검토 기준, max 3회)
 │   │   ├── cta_analyzer.py      # CTA 분석 에이전트 (고객 발화 기반)
 │   │   └── korean_translator.py # 리포트 한글 번역 에이전트
 │   ├── services/
@@ -132,6 +149,11 @@ ippeo/
 │   │   ├── gemini_client.py     # Gemini API (LLM + 임베딩)
 │   │   ├── email_service.py     # Gmail SMTP 이메일 발송
 │   │   └── youtube_service.py   # YouTube 자막 수집 + 정제 + FAQ 변환
+│   ├── scripts/
+│   │   ├── build_vector_db.py         # YouTube 벡터DB 빌드
+│   │   ├── build_pubmed_vectors.py    # PubMed 벡터DB 빌드
+│   │   ├── stt_pipeline.py            # STT 파이프라인
+│   │   └── reclassify_youtube_faq.py  # YouTube FAQ 카테고리 재분류 스크립트
 │   ├── models/
 │   │   └── schemas.py           # Pydantic 데이터 모델
 │   ├── config.py                # 환경변수 로드
@@ -140,7 +162,13 @@ ippeo/
 │
 ├── supabase/
 │   └── migrations/
-│       └── 001_initial_schema.sql  # 전체 DB 스키마
+│       ├── 001_initial_schema.sql         # 전체 DB 스키마
+│       ├── 002_classification_keywords.sql # 분류 키워드 사전 seed
+│       ├── 003_customer_id_admin.sql      # customer_id + admin_users 추가
+│       ├── 004_search_faq_columns.sql     # search_faq RPC에 출처 컬럼 추가
+│       ├── 005_registered_status.sql      # consultations에 registered 상태 추가
+│       ├── 006_input_language.sql         # consultations.input_language 추가 (ja/ko)
+│       └── 007_multi_report_types.sql     # reports.report_type 추가 (r1~r4)
 │
 ├── CLAUDE.md                    # 이 파일
 └── .env                         # 환경변수 (gitignore)
@@ -167,9 +195,11 @@ CREATE TABLE consultations (
     customer_name TEXT NOT NULL,
     customer_email TEXT NOT NULL,
     customer_line_id TEXT,
-    
+    customer_id TEXT,                      -- 플랫폼 고객 ID
+    input_language TEXT DEFAULT 'ja' CHECK (input_language IN ('ja', 'ko')), -- 입력 언어
+
     -- 원문 및 번역
-    original_text TEXT NOT NULL,           -- 일본어 원문 (STT/다이얼로그)
+    original_text TEXT NOT NULL,           -- 원문 (일본어 또는 한국어, input_language에 따라)
     translated_text TEXT,                  -- 한국어 번역본
     
     -- 화자 분리 데이터
@@ -221,20 +251,27 @@ CREATE TABLE consultations (
 CREATE TABLE reports (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     consultation_id UUID REFERENCES consultations(id) ON DELETE CASCADE,
-    
-    -- 리포트 내용 (7섹션)
+    report_type TEXT NOT NULL DEFAULT 'r4' CHECK (report_type IN ('r1', 'r2', 'r3', 'r4')),
+
+    -- 리포트 내용 (R4: 10섹션, R1: 7섹션, R2: 5섹션, R3: 4섹션)
     report_data JSONB NOT NULL,
-    -- 구조:
+    -- R4 구조 (고객용, 일본어, 10섹션):
     -- {
-    --   "title": "OO様 鼻再手術のご相談まとめ",
-    --   "section1_summary": { "text": "...", "points": [...] },
-    --   "section2_direction": { "desired": [...], "quote": "..." },
-    --   "section3_concerns": { "points": [...], "supplement": "..." },
-    --   "section4_medical": { "explanations": [...], "footnote": "..." },
-    --   "section5_proposal": { "steps": [...] },
-    --   "section6_options": { "recommended": [...], "optional": [...], "unnecessary": [...], "comment": "..." },
-    --   "section7_recovery": { "info": [...], "closing_comment": "..." }
+    --   "title": "OO様 ご相談リポート",
+    --   "section1_key_summary": { "summary_text": "...", "concern_list": [...] },
+    --   "section2_cause_analysis": { "explanations": [...], "footnote": "..." },
+    --   "section3_recommendation": { "steps": [...] },
+    --   "section4_recovery": { "info": [...] },
+    --   "section5_scar_info": { ... },
+    --   "section6_precautions": { ... },
+    --   "section7_risks": { ... },
+    --   "section8_cost_estimate": { ... },
+    --   "section9_visit_date": { ... },
+    --   "section10_ippeo_message": { ... }
     -- }
+
+    -- UNIQUE 제약: 상담 1건당 같은 타입 리포트 1개만
+    -- UNIQUE (consultation_id, report_type)
     
     -- 한국어 번역본
     report_data_ko JSONB,                 -- 동일 구조의 한국어 버전
@@ -440,15 +477,23 @@ $$;
     └────┬─────┘      └────┬──────┘
          │                  │
          └────────┬─────────┘
+                  │
+         ┌────────▼─────────┐
+         │ _generate_all_reports()  │
+         │                         │
+         │ [R1] 의사용 (한국어)     │ → 7섹션 (비활성화)
+         │ [R2] 상담실장용 (한국어) │ → 5섹션, R1 기반 (비활성화)
+         │ [R3] 경영진용 (한국어)   │ → 4섹션, R1+R2 기반 (비활성화)
+         │ [R4] 고객용 (일본어)     │ → 10섹션 (활성)
+         └────────┬─────────┘
+                  │ (각 타입별)
              ┌────▼──────┐
-             │리포트 작성  │ → 7섹션 일본어 리포트 생성
-             │Agent      │    (한국어 RAG 데이터 + 일본어 원문 참조)
-             └────┬──────┘
-             ┌────▼──────┐
-             │ 검토 Agent  │ → Pass/Fail (max 3회 재시도)
+             │ 검토 Agent  │ → Pass/Fail (max 3회, 타입별 검토 기준)
              └────┬──────┘
                   │
-            [DB 저장 → 관리자 검토 대기]
+            [DB 저장 (consultation_id + report_type으로 upsert)]
+                  │
+            [관리자 검토 대기]
 ```
 
 ### 상담 등록과 리포트 생성 분리
@@ -599,54 +644,83 @@ async def generate_reports(data):
 
 **안전 폴백:** 벡터DB에서 유사도 0.7 이상 결과가 없는 시술은 리포트에 "내원 상담 시 상세 안내드리겠습니다"로 처리.
 
-### 7. 리포트 작성 에이전트 (report_writer.py)
+### 7. R4 리포트 작성 에이전트 (report_writer.py) — 고객용, 일본어
 
 ```
-입력: 
+입력:
   - 한국어 RAG 데이터 (의료 지식)
   - 일본어 원문 (고객 뉘앙스)
   - 의도 추출 결과
   - 분류 결과
-출력: 7섹션 일본어 리포트 JSON
+출력: 10섹션 일본어 리포트 JSON
 ```
 
 **중요: 이 에이전트에는 한국어 RAG 데이터 + 일본어 원문을 동시에 제공한다.**
 - 의료 정보의 정확성 → 한국어 RAG 데이터에서
 - 일본어 표현의 자연스러움 → 일본어 원문에서
 
-#### 리포트 7섹션 구조
+#### R4 리포트 10섹션 구조 (현행)
 
-**섹션1 — 今回のご相談まとめ (상담 요약)**
-- 본문: 상담 내용 2~3줄 요약
-- 핵심 고민 3가지 리스트
+**섹션1 — ご相談の要点 (핵심 요약)**
+- summary_text: 상담 핵심 요약 2~3줄
+- concern_list: 핵심 고민 리스트
 
-**섹션2 — ご希望の方向性 (희망 방향)**
-- 원하는 것 리스트 (✅ 아이콘)
-- 인용 형태의 요약 한 줄 (고객 말 뉘앙스 반영)
+**섹션2 — 原因・背景の分析 (원인 분석)**
+- explanations: 의료적 근거 설명 카드 (3~4개) ← RAG 의존도 높음
+- footnote: 안심 문구
 
-**섹션3 — 特にお気にされていた点 (우려 사항)**
-- 고객이 반복 언급한 포인트 리스트 (⚠️ 아이콘)
-- 보충 설명 (작은 글씨)
+**섹션3 — おすすめの方向性 (추천 방향)**
+- steps: STEP 형태로 접근 방법 제시 ← RAG 의존도 높음
 
-**섹션4 — 医療的なご説明 (의료적 설명)** ← RAG 의존도 높음
-- 번호 카드 형태로 의료적 근거 설명 (3~4개)
-- 하단 주석: "문제가 있는 결과라기보다 구조적 특성입니다" 류의 안심 문구
+**섹션4 — 回復について (회복 정보)**
+- info: 회복 기간, 주의사항 등 정보 테이블
 
-**섹션5 — ご提案の方向性 (제안 방향)** ← RAG 의존도 높음
-- STEP 형태로 접근 방법 제시 (3단계)
-- 피부과: 치료 프로토콜, 횟수, 간격 중심
-- 성형외과: 구조적 접근법 중심
+**섹션5 — 傷跡について (흉터 정보)**
+- 시술 후 흉터 관련 안내
 
-**섹션6 — 選択肢の整理 (선택지 정리)**
-- ✅ 해야 할 것 (그린 계열)
-- 💡 하면 좋은 것 (블루 계열)
-- ⏸ 안 해도 되는 것 (그레이 계열)
-- 하단 코멘트
+**섹션6 — 施術前後の注意点 (시술 전후 주의사항)**
+- 시술 전/후 주의점 리스트
 
-**섹션7 — 回復・スケジュール・総合コメント (회복/일정/종합)**
-- 정보 테이블 (CT 촬영, 발사일, 체류 기간 등)
-- 종합 코멘트 (부드러운 제안형)
-- ⚠️ 가격/비용 정보 절대 포함하지 않음 (병원마다 다르고 통제 불가)
+**섹션7 — リスクについて (리스크 안내)**
+- 시술 관련 리스크 설명
+
+**섹션8 — 費用の目安 (비용 목안)**
+- 참고용 비용 안내 (AI 창작 금지, RAG 근거만 허용)
+
+**섹션9 — ご来院の目安 (내원 일정)**
+- 추천 내원 시기, 상담 예약 안내
+
+**섹션10 — イッポからのメッセージ (이뽀 메시지)**
+- 개인화된 격려/안내 메시지 (상담 고유 내용 반영, 템플릿 복사 금지)
+
+> 리포트 버전 이력: V2(7섹션) → V3(9섹션) → V4(10섹션, 현행). 프론트엔드에서 `isV3Report()` 함수로 V3+ 판별 (`section1_key_summary` 키 존재 여부).
+
+### 7-1. R1 의사용 리포트 (r1_doctor_writer.py) `[비활성화]`
+
+```
+입력: 원문 + 번역 + 의도추출 + 분류 + RAG + CTA + 화자분리
+출력: 7섹션 한국어 리포트 JSON
+```
+
+7섹션: 환자 개요, 핵심 호소, 언급 시술, 의학적 맥락, 환자 우려사항(우선순위 포함), 내원 의지(CTA+근거), 사전 참고사항.
+
+### 7-2. R2 상담실장용 리포트 (r2_director_writer.py) `[비활성화]`
+
+```
+입력: R1 리포트 데이터 + 상담 원본 데이터
+출력: 5섹션 한국어 리포트 JSON
+```
+
+5섹션: 시술 요약(R1 기반), 필요 리소스, 비용 계획(`is_estimate: true` 필수), 일정 계획, 환자 준비도.
+
+### 7-3. R3 경영진용 리포트 (r3_executive_writer.py) `[비활성화]`
+
+```
+입력: R1 + R2 리포트 데이터
+출력: 4섹션 한국어 리포트 JSON
+```
+
+4섹션 (3기둥 + 요약): 마케팅 분석, 의료 분석, 환자 관리 전략, 경영진 요약(액션 아이템 3개).
 
 #### 톤앤매너
 - 부드러운 제안형 어투: "〜と理解されました", "〜と見受けられました", "〜をお勧めいたします"
@@ -660,18 +734,23 @@ async def generate_reports(data):
 ### 8. 검토 에이전트 (report_reviewer.py)
 
 ```
-입력: 생성된 리포트 JSON
+입력: 생성된 리포트 JSON + report_type (r1/r2/r3/r4)
 출력: Pass / Fail + 피드백
 최대 재시도: 3회
 ```
 
-**검토 기준:**
-- 7섹션 모두 존재하는가?
+타입별 검토 기준이 분리되어 있다 (`_get_review_config(report_type)`):
+
+**R4 검토 기준 (일본어 프롬프트):**
+- 10섹션 모두 존재하는가?
 - 일본어 문법/표현이 자연스러운가?
-- 의료 정보가 RAG 데이터와 일치하는가?
-- 가격/비용 정보가 포함되어 있지 않은가?
-- 톤앤매너가 제안형인가?
-- 안전 폴백이 적절히 적용되었는가?
+- 비용 정보가 AI 창작이 아닌가? (RAG 근거만 허용)
+- 톤앤매너가 중립 간결체인가?
+- 개인화 메시지가 상담 고유 내용을 반영하는가?
+
+**R1 검토 기준 (한국어):** 7섹션 존재, 의료 전문 용어 사용, CTA 정보 포함 여부
+**R2 검토 기준 (한국어):** 5섹션 존재, 리소스 현실성, 비용 추정치 라벨 여부
+**R3 검토 기준 (한국어):** 4섹션 존재, 액션 아이템 구체성, 경영 인사이트 포함
 
 Fail 시 피드백과 함께 리포트 작성 에이전트에 재전달. 3회 실패 시 현재 상태로 저장하고 관리자에게 수동 검토 요청.
 
@@ -873,19 +952,25 @@ JSON 배열로 반환.
 - 세션 간 40px 여백
 - 스크롤 시 섹션 페이드인 애니메이션 (경량)
 
-### 7섹션 컴포넌트
+### 10섹션 컴포넌트 (R4, 현행)
 
-각 섹션은 독립 React 컴포넌트로 구현:
-- `Section1Summary` — 상담 요약
-- `Section2Direction` — 희망 방향
-- `Section3Concerns` — 우려 사항
-- `Section4Medical` — 의료적 설명 (RAG 기반)
-- `Section5Proposal` — 제안 방향 (RAG 기반)
-- `Section6Options` — 선택지 정리
-- `Section7Recovery` — 회복/일정/종합 코멘트
+관리자 리포트 상세 화면(`/admin/reports/[id]`)에서 `R4Sections` 컴포넌트로 인라인 렌더링:
+1. **핵심 요약** (section1_key_summary) — 상담 요점 + 고민 리스트
+2. **원인 분석** (section2_cause_analysis) — 의료적 근거 설명 카드
+3. **추천 방향** (section3_recommendation) — STEP 형태 제안
+4. **회복 정보** (section4_recovery) — 회복 기간/주의사항
+5. **흉터 정보** (section5_scar_info) — 시술 후 흉터 안내
+6. **주의사항** (section6_precautions) — 시술 전후 주의점
+7. **리스크** (section7_risks) — 시술 리스크 설명
+8. **비용 목안** (section8_cost_estimate) — 참고 비용
+9. **내원 일정** (section9_visit_date) — 추천 내원 시기
+10. **이뽀 메시지** (section10_ippeo_message) — 개인화 격려 메시지
+
+> 소비자 리포트 페이지(`/report/[token]`)의 컴포넌트 (기존 V2 7섹션):
+> Section1Summary ~ Section7Recovery — 레거시 하위호환용으로 유지
 
 ### 헤더/푸터
-- 헤더: "이뽀 | 化粧相談リポート" 로고 + 고객명 + 상담 제목 + 날짜
+- 헤더: "IPPEO | オンライン相談リポート" 로고 + 고객명 + 상담 제목 + 날짜
 - 푸터: "이뽀(이뽀) | 韓国美容医療コンサルティング" + 면책 문구 + 문의 링크
 
 ---
@@ -1068,11 +1153,13 @@ INSERT INTO classification_keywords (category, keyword, context_keywords) VALUES
 ## 현재 완료 상태
 
 - Phase 1 (인프라): 완료
-- Phase 2 (백엔드): 완료 — 9개 에이전트 + 파이프라인 + API + Gmail 이메일
-- Phase 3 (프론트엔드): 완료 — 관리자페이지 + 소비자 리포트
+- Phase 2 (백엔드): 완료 — 12개 에이전트 (R1~R4 writer 4개 + 공통 8개) + 파이프라인 + API + Gmail 이메일
+- Phase 3 (프론트엔드): 완료 — 관리자페이지 + 소비자 리포트 + 내부 리포트 컴포넌트(R1~R3)
 - Phase 4 (배포): 완료 — Cloud Run (백엔드) + Firebase (프론트엔드)
 - 벡터DB 파이프라인: 완료 — YouTube 2,448 + PubMed 2,336 = 4,784 벡터
-- 추가 기능: 고객 정보 수정, 일괄 승인, 리포트 재생성, 벡터DB 관리 페이지
+- 다중 리포트 타입: R1~R4 아키텍처 구현 완료. R4만 활성, R1~R3 비활성화 대기
+- DB 마이그레이션: 001~007 완료 (report_type, input_language, customer_id 등)
+- 추가 기능: 고객 정보 인라인 편집, 일괄 승인, 리포트 재생성, 한국어 입력 지원, FAQ 재분류 스크립트
 
 ---
 
@@ -1095,8 +1182,8 @@ INSERT INTO classification_keywords (category, keyword, context_keywords) VALUES
 2. **일본어 원문은 반드시 보존한다.** 번역 후에도 원문 DB에 남겨야 한다.
 3. **분류는 단일 분류 원칙.** 피부과 OR 성형외과, 혼합 불가.
 4. **미분류는 파이프라인 중단.** 관리자 수동 분류 후 재개.
-5. **리포트에 가격/비용 정보 절대 포함하지 않는다.**
-6. **CTA는 리포트에 넣지 않는다.** 관리자페이지 내부 데이터로만 활용.
+5. **R4 리포트의 비용 정보는 AI 창작 금지.** RAG에 근거가 있을 때만 목안으로 표시.
+6. **CTA는 R4 고객 리포트에 넣지 않는다.** R1(의사용)에만 포함. 관리자페이지에서도 활용.
 7. **벡터DB 검색 시 카테고리 필터 필수.** 피부과 상담에 성형외과 데이터가 나오면 안 된다.
 8. **YouTube 자동 자막 없는 영상은 스킵.** 처리하려고 시간 쓰지 말 것.
 9. **리포트 톤: 부드러운 제안형.** 단정형/명령형 절대 사용 금지.
@@ -1104,3 +1191,6 @@ INSERT INTO classification_keywords (category, keyword, context_keywords) VALUES
 11. **Gemini API JSON 응답 방어.** `json.loads()` 후 `isinstance(data, list)` 체크 필수 (가끔 `[{...}]` 반환).
 12. **Supabase select() 페이지네이션.** 기본 1000행 제한. `.range(offset, offset+999)` 루프 필요.
 13. **이메일 발송 실패가 승인을 블로킹하면 안 됨.** 승인과 이메일 발송은 별도 동작.
+14. **R1~R3 비활성화 주석 규칙.** `[R1-R3 비활성화]` 주석이 있는 코드 블록은 절대 삭제하지 말고 주석 상태 유지. 활성화 시 주석만 해제.
+15. **리포트 저장은 upsert.** `consultation_id + report_type`으로 기존 리포트가 있으면 update, 없으면 insert.
+16. **R4 리포트 톤: 중립형 간결체.** 과도한 감정 표현이나 단정형 금지. (최근 커밋에서 따뜻한 상세 문체 → 중립 간결체로 복원)

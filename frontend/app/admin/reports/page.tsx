@@ -16,6 +16,10 @@ const CLASSIFICATION_MAP: Record<string, string> = {
   dermatology: "💊 피부과",
 };
 
+// [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
+// const REPORT_TYPE_BADGE = { r1: ..., r2: ..., r3: ..., r4: ... };
+// const REPORT_TYPE_TABS = [...];
+
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
@@ -152,6 +156,8 @@ export default function ReportsPage() {
       </header>
 
       <div className="p-8 max-w-[1400px] mx-auto w-full space-y-6">
+        {/* [R1-R3 비활성화] 리포트 타입 필터 탭 숨김 */}
+
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {loading && reports.length === 0 ? (
             <div className="flex items-center justify-center py-20">

@@ -7,15 +7,18 @@ from config import GMAIL_ADDRESS, GMAIL_APP_PASSWORD, FRONTEND_URL
 
 logger = logging.getLogger(__name__)
 
+# [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
+# _REPORT_TYPE_CONFIG = {
+#     "r1": {"subject_template": "【IPPEO】{customer_name} 환자 — 의사 브리핑 리포트", "label": "의사 브리핑", "lang": "ko"},
+#     "r2": {"subject_template": "【IPPEO】{customer_name} 환자 — 운영 브리핑 리포트", "label": "운영 브리핑", "lang": "ko"},
+#     "r3": {"subject_template": "【IPPEO】{customer_name} 환자 — 종합 분석 리포트", "label": "종합 분석", "lang": "ko"},
+#     "r4": {"subject_template": "【IPPEO】{customer_name}様 ご相談リポートが届きました", "label": "ご相談リポート", "lang": "ja"},
+# }
 
-async def send_report_email(
-    to_email: str,
-    customer_name: str,
-    access_token: str,
-) -> dict:
-    report_url = f"{FRONTEND_URL}/report/{access_token}"
 
-    html_content = f"""
+def _build_r4_html(customer_name: str, report_url: str) -> str:
+    """R4 고객용 일본어 이메일 (기존)"""
+    return f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -57,10 +60,27 @@ async def send_report_email(
     </html>
     """
 
+
+# [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
+# def _build_internal_html(customer_name, report_url, report_label):
+#     """R1~R3 내부용 한국어 이메일"""
+#     ...
+
+
+async def send_report_email(
+    to_email: str,
+    customer_name: str,
+    access_token: str,
+) -> dict:
+    report_url = f"{FRONTEND_URL}/report/{access_token}"
+
+    subject = f"【IPPEO】{customer_name}様 ご相談リポートが届きました"
+    html_content = _build_r4_html(customer_name, report_url)
+
     msg = MIMEMultipart("alternative")
     msg["From"] = f"IPPEO <{GMAIL_ADDRESS}>"
     msg["To"] = to_email
-    msg["Subject"] = f"【IPPEO】{customer_name}様 ご相談リポートが届きました"
+    msg["Subject"] = subject
     msg["Reply-To"] = GMAIL_ADDRESS
     msg.attach(MIMEText(html_content, "html", "utf-8"))
 
@@ -70,5 +90,5 @@ async def send_report_email(
             server.send_message(msg)
 
     await asyncio.to_thread(_send)
-    logger.info(f"[Email] Sent to {to_email} for {customer_name}")
+    logger.info(f"[Email] Sent R4 to {to_email} for {customer_name}")
     return {"id": "gmail", "to": to_email}

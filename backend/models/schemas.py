@@ -72,6 +72,11 @@ class ReportRegenerateRequest(BaseModel):
     direction: str
 
 
+# [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
+# class SendEmailRequest(BaseModel):
+#     to_email: Optional[str] = None  # R1~R3용 수동 이메일 입력
+
+
 class ConsultationUpdateRequest(BaseModel):
     customer_name: Optional[str] = None
     customer_email: Optional[str] = None

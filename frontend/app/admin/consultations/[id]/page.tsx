@@ -37,6 +37,8 @@ export default function ConsultationDetailPage({
     customer_line_id: "",
     customer_id: "",
   });
+  // [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
+  // const [reports, setReports] = useState<Report[]>([]);
 
   useEffect(() => {
     consultationAPI
@@ -432,14 +434,17 @@ export default function ConsultationDetailPage({
               )
             )}
           </div>
-          <div className="p-4 border-t border-slate-100 text-right">
-            <Link
-              href={`/admin/reports/${id}`}
-              className="text-primary text-sm font-semibold hover:underline inline-flex items-center gap-1"
-            >
-              리포트 보기
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
-            </Link>
+          <div className="p-4 border-t border-slate-100">
+            {/* [R1-R3 비활성화] 리포트 현황 그리드 숨김, 기존 단일 링크 복원 */}
+            <div className="text-right">
+              <Link
+                href={`/admin/reports/${id}`}
+                className="text-primary text-sm font-semibold hover:underline inline-flex items-center gap-1"
+              >
+                리포트 보기
+                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

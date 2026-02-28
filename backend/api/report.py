@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from models.schemas import ReportEditRequest, ReportRegenerateRequest, BulkApproveRequest
 
 
@@ -25,6 +25,21 @@ async def list_reports():
         .execute()
     )
     return {"data": result.data}
+
+
+# [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
+# @router.get("/by-consultation/{consultation_id}")
+# async def list_reports_by_consultation(consultation_id: str):
+#     """해당 상담의 R1~R4 전체 리포트 조회"""
+#     db = get_supabase()
+#     result = (
+#         db.table("reports")
+#         .select("*, consultations(customer_name, customer_email, customer_line_id, classification, cta_level)")
+#         .eq("consultation_id", consultation_id)
+#         .order("report_type")
+#         .execute()
+#     )
+#     return {"data": result.data}
 
 
 @router.post("/delete")
@@ -86,7 +101,7 @@ async def get_report(report_id: str):
     if result.data and len(result.data) > 0:
         return result.data[0]
 
-    # 2차: consultation_id로 조회 (상담 상세에서 리포트 보기 링크용)
+    # 2차: consultation_id로 조회
     result = (
         db.table("reports")
         .select("*, consultations(customer_name, customer_email, customer_line_id, classification, cta_level)")
@@ -157,10 +172,14 @@ async def send_email(report_id: str):
 
     consultation = report.data["consultations"]
     access_token = report.data["access_token"]
+    to_email = consultation["customer_email"]
+
+    if not to_email:
+        raise HTTPException(status_code=400, detail="발송할 이메일 주소가 없습니다")
 
     try:
         await send_report_email(
-            to_email=consultation["customer_email"],
+            to_email=to_email,
             customer_name=consultation["customer_name"],
             access_token=access_token,
         )
@@ -180,7 +199,7 @@ async def send_email(report_id: str):
     return {
         "id": report_id,
         "status": "sent",
-        "email_sent_to": consultation["customer_email"],
+        "email_sent_to": to_email,
         "access_token": access_token,
     }
 
