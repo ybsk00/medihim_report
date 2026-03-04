@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import re
 from datetime import datetime, timezone, timedelta
 from services.gemini_client import generate_json, safe_parse_json
 
@@ -8,6 +9,11 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_INSTRUCTION = """あなたは医療コンサルティングリポートの専門ライターです。
 日本語で簡潔かつ中立的なリポートを作成してください。
+
+日付の解釈ルール:
+- 本日の日付はプロンプト内で提供されます。必ず参照すること。
+- 相談で「3月」「来月」など年を含まない日付が言及された場合、本日の日付から最も近い未来の日付として解釈すること。
+- 過去の日付を来院予定日として設定しないこと。
 
 トーン＆マナー:
 - 中立的・整理型の語調を使用する
@@ -80,14 +86,15 @@ async def write_report(
             if h.get("other_details"):
                 hospital_section += f"  その他: {h['other_details']}\n"
 
-    # 관리자 재생성 지시 섹션 (있을 때만)
+    # 관리자 재생성 지시 섹션 (있을 때만) — 프롬프트 최상단에 배치
     admin_direction_section = ""
     if admin_direction:
-        admin_direction_section = f"""
-== 管理者からの修正指示（最優先で反映すること）==
+        admin_direction_section = f"""== 【最優先】管理者からの修正指示 ==
+以下の管理者指示は、相談内容やRAGデータよりも優先されます。
+リポートの全セクションにおいて、この指示を最優先で反映してください。
+
 {admin_direction}
 
-上記の管理者指示を最優先で反映してください。
 """
 
     # 고객명에서 성만 추출 (예: "田中 陽子" → "田中")
@@ -105,9 +112,43 @@ async def write_report(
 == 韓国語翻訳（意味確認用）==
 {translated_text}"""
 
-    prompt = f"""以下の情報を元に、10セクションの日本語リポートをJSON形式で作成してください。
+    # 현재 일본 시간(JST) — LLM에 날짜 컨텍스트 제공
+    jst = timezone(timedelta(hours=9))
+    now_jst = datetime.now(jst)
+    current_date_str = f"{now_jst.year}年{now_jst.month}月{now_jst.day}日"
+
+    # 추출된 비용/일정 정보를 명시적으로 전달
+    cost_schedule_section = ""
+    cost_mentions = intent_extraction.get("cost_mentions", [])
+    visit_schedule = intent_extraction.get("visit_schedule")
+
+    if cost_mentions:
+        cost_schedule_section += "\n== 相談で確認された費用情報（必ずsection8に反映すること）==\n"
+        for i, c in enumerate(cost_mentions, 1):
+            cost_schedule_section += f"  {i}. {c.get('item', '不明')}: {c.get('amount', '不明')}"
+            if c.get("context"):
+                cost_schedule_section += f"（{c['context']}）"
+            cost_schedule_section += "\n"
+        cost_schedule_section += "※ 上記の費用情報はsection8_cost_estimateのitemsに必ず反映すること。省略禁止。\n"
+
+    if visit_schedule and isinstance(visit_schedule, dict):
+        dates = visit_schedule.get("mentioned_dates", [])
+        timing = visit_schedule.get("preferred_timing")
+        if dates or timing:
+            cost_schedule_section += f"\n== 相談で確認された来院日程（必ずsection9に反映すること）==\n"
+            if dates:
+                cost_schedule_section += f"  具体的な日付: {', '.join(dates)}\n"
+            if timing:
+                cost_schedule_section += f"  希望時期: {timing}\n"
+            cost_schedule_section += f"※ 上記の日程はsection9_visit_dateに必ず反映すること。年が不明な場合は{now_jst.year}年として記載。\n"
+
+    prompt = f"""{admin_direction_section}以下の情報を元に、10セクションの日本語リポートをJSON形式で作成してください。
 各項目は簡潔に1〜2文以内で記述し、セクション間の重複を排除してください。
 カウンセラーが相談で実際に言及した内容のみを記載してください。
+
+== 本日の日付 ==
+{current_date_str}
+※ 相談で月のみ言及された場合（例:「3月」）、{now_jst.year}年として解釈すること。過去の日付にならないよう注意。
 
 == 分類 ==
 {category_note}
@@ -116,13 +157,13 @@ async def write_report(
 {display_name}様
 
 {consultation_section}
-
+{cost_schedule_section}
 == 意図抽出結果 ==
 {json.dumps(intent_extraction, ensure_ascii=False)}
 
 == 参考資料（内容検証用、直接引用しない）==
 {rag_context}
-{hospital_section}{admin_direction_section}
+{hospital_section}
 == 出力JSON形式 ==
 {{
     "title": "{display_name}様 OOのご相談リポート",
@@ -240,14 +281,14 @@ async def write_report(
 }}
 
 重要ルール:
-- section8_cost_estimate: 相談中にカウンセラーが具体的な金額を言及した場合のみ記載すること。AIが費用を推測・創作することは絶対禁止。言及がなければitemsは空配列[]にすること
+- section8_cost_estimate: 相談中にカウンセラーが具体的な金額を言及した場合のみ記載すること。AIが費用を推測・創作することは絶対禁止。言及がなければitemsは空配列[]にすること。「相談で確認された費用情報」セクションが提供されている場合、その内容を必ず反映すること
 - section1〜3は相談で言及された内容のみに基づくこと
 - section4（回復スケジュール）: 相談で具体的な回復期間が言及された場合はその内容を優先的に記載すること（病院別の回復情報がある場合は区別して記載）。言及がない場合は、提案された施術に基づく一般的な回復経過を記載すること（「診察時に説明します」のような空回答は禁止）
 - section5（傷跡）・section6（注意事項）・section7（リスク）は、相談で言及がなくても該当施術の一般的な医学情報を記載すること（空にしない）
 - PubMed論文の引用（citation）は含めないこと
 - 各項目は1〜2文以内で簡潔に
 - セクション間の重複・繰り返しを排除すること
-- section9_visit_date: 相談で日付が言及されていなければdateは「未定」と記載すること
+- section9_visit_date: 相談で日付が言及されていなければdateは「未定」と記載すること。日付が言及されている場合は年を含む形式（YYYY.MM.DD）で記載し、本日（{current_date_str}）より過去の日付にならないこと。「相談で確認された来院日程」セクションが提供されている場合、その内容を必ず反映すること
 - pointsの配列に空文字列("")を入れないこと。内容がある項目のみ含めること
 - 全10セクション必須
 - section10_ippeo_message: 各paragraphは必ずこのお客様の相談内容に固有の表現で作成すること。テンプレート的な汎用文（「魅力を引き出す」「鏡を見るたびに」「旅行で写真」等）の使い回しは禁止。お客様が相談で述べた具体的な悩み・希望・施術名に言及して、この方だけに向けたメッセージにすること
@@ -270,8 +311,19 @@ async def write_report(
                 raise ValueError(f"Report JSON parse failed after 2 attempts: {str(e)}")
 
     # 리포트 작성일을 현재 일본 시간(JST) 기준으로 확정
-    jst = timezone(timedelta(hours=9))
-    now_jst = datetime.now(jst)
     report["date"] = f"作成日：{now_jst.year}年{now_jst.month}月{now_jst.day}日"
+
+    # section9_visit_date 연도 후처리 검증 (과거 연도 보정)
+    visit_date_section = report.get("section9_visit_date")
+    if visit_date_section and isinstance(visit_date_section, dict):
+        visit_date_str = visit_date_section.get("date", "")
+        if visit_date_str and visit_date_str != "未定":
+            year_match = re.search(r'(20\d{2})', visit_date_str)
+            if year_match:
+                visit_year = int(year_match.group(1))
+                if visit_year < now_jst.year:
+                    corrected = visit_date_str.replace(str(visit_year), str(now_jst.year))
+                    report["section9_visit_date"]["date"] = corrected
+                    logger.warning(f"[ReportWriter] Corrected visit date year: {visit_date_str} → {corrected}")
 
     return report

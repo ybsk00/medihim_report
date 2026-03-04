@@ -444,18 +444,18 @@ async def _generate_all_reports(
 
     try:
         # R4는 기존 write_report 사용 (일본어)
-        # 피드백 루프를 위해 original_text 복사
-        r4_original = original_text
         r4_report_data = None
         r4_review_count = 0
         max_retries = 3
+        accumulated_feedback = None  # 리뷰 피드백 누적 (원문 오염 방지)
 
         for attempt in range(max_retries):
             logger.info(f"[Pipeline:{consultation_id[:8]}] R4 write attempt {attempt + 1}/{max_retries}")
             start = time.time()
             r4_report_data = await write_report(
-                r4_original, translated_text, intent, classification,
+                original_text, translated_text, intent, classification,
                 rag_results, customer_name,
+                admin_direction=accumulated_feedback,
                 input_lang=input_lang,
                 hospital_mentions=hospital_mentions,
             )
@@ -477,7 +477,10 @@ async def _generate_all_reports(
 
             if attempt < max_retries - 1:
                 feedback = review.get("feedback", "")
-                r4_original = r4_original + f"\n\n[レビューフィードバック: {feedback}]"
+                if accumulated_feedback:
+                    accumulated_feedback = f"{accumulated_feedback}\n[レビューフィードバック: {feedback}]"
+                else:
+                    accumulated_feedback = f"[レビューフィードバック: {feedback}]"
 
         await _save_report(consultation_id, "r4", r4_report_data, rag_results, r4_review_count, max_retries)
         logger.info(f"[Pipeline:{consultation_id[:8]}] R4 complete")
@@ -555,24 +558,24 @@ async def regenerate_report(report_id: str, direction: str):
             # 병원 정보 추출 (intent_extraction에서)
             regen_hospital_mentions = intent.get("hospital_mentions", []) if intent else []
 
-            r4_original = original_text
             r4_report_data = None
             r4_review_count = 0
             max_retries = 3
+            current_direction = direction  # 관리자 지시 보존, 리뷰 피드백은 여기에 추가
 
             for attempt in range(max_retries):
                 start = time.time()
                 r4_report_data = await write_report(
-                    r4_original, translated_text, intent, classification,
+                    original_text, translated_text, intent, classification,
                     rag_results, customer_name,
-                    admin_direction=direction,
+                    admin_direction=current_direction,
                     input_lang=input_lang,
                     hospital_mentions=regen_hospital_mentions,
                 )
                 duration = int((time.time() - start) * 1000)
                 await _log_agent(
                     consultation_id, "r4_writer_regen",
-                    None, {"attempt": attempt + 1, "direction": direction[:100]},
+                    None, {"attempt": attempt + 1, "direction": current_direction[:100]},
                     duration, "success",
                 )
 
@@ -586,7 +589,8 @@ async def regenerate_report(report_id: str, direction: str):
                     break
 
                 if attempt < max_retries - 1:
-                    r4_original = r4_original + f"\n\n[レビューフィードバック: {review.get('feedback', '')}]"
+                    feedback = review.get("feedback", "")
+                    current_direction = f"{direction}\n[レビューフィードバック: {feedback}]"
 
             # 기존 리포트 레코드 업데이트
             access_token = report.get("access_token") or uuid.uuid4().hex
