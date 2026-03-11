@@ -25,7 +25,7 @@ async def notify_report_ready(consultation_id: str):
     # 상담 데이터 조회
     consultation = (
         db.table("consultations")
-        .select("id, status, customer_name, consultation_round, error_message")
+        .select("id, status, customer_name, consultation_round, ippeo_consultation_id, error_message")
         .eq("id", consultation_id)
         .single()
         .execute()
@@ -36,13 +36,15 @@ async def notify_report_ready(consultation_id: str):
 
     c = consultation.data
     consultation_round = c.get("consultation_round") or 1
+    ippeo_consultation_id = c.get("ippeo_consultation_id") or ""
 
     # 실패 시
     if c["status"] == "report_failed":
         payload = {
-            "consultation_id": consultation_id,
-            "consultation_round": consultation_round,
             "status": "report_failed",
+            "consultation_id": consultation_id,
+            "ippeo_consultation_id": ippeo_consultation_id,
+            "ippeo_consultation_round": consultation_round,
             "customer_name": c["customer_name"],
             "error_message": c.get("error_message") or "리포트 생성 실패",
         }
@@ -60,9 +62,10 @@ async def notify_report_ready(consultation_id: str):
     embed_base = f"{FRONTEND_URL}/embed"
 
     payload = {
-        "consultation_id": consultation_id,
-        "consultation_round": consultation_round,
         "status": c["status"],
+        "consultation_id": consultation_id,
+        "ippeo_consultation_id": ippeo_consultation_id,
+        "ippeo_consultation_round": consultation_round,
         "customer_name": c["customer_name"],
     }
 
