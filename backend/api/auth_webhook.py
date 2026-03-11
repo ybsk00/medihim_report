@@ -32,8 +32,16 @@ async def verify_api_key(request: Request):
     return True
 
 
-async def verify_webhook_signature(request: Request):
-    """HMAC-SHA256 서명 검증"""
+async def verify_webhook(request: Request):
+    """API Key + HMAC-SHA256 서명 동시 검증 (Webhook 엔드포인트용)
+
+    body를 미리 읽어 캐시한 뒤 서명 검증.
+    FastAPI가 이후 body를 재파싱할 수 있도록 _body에 캐시.
+    """
+    # 1. API Key 검증
+    await verify_api_key(request)
+
+    # 2. HMAC-SHA256 서명 검증
     secret = _get_webhook_secret()
     if not secret:
         # Secret 미설정 시 개발 모드로 통과
@@ -47,7 +55,10 @@ async def verify_webhook_signature(request: Request):
             "message": "서명 형식이 올바르지 않습니다. sha256=... 형식이어야 합니다."
         })
 
+    # body를 읽고 캐시 (FastAPI가 이후 Pydantic 파싱 시 재사용)
     body = await request.body()
+    request._body = body
+
     expected = hmac.new(
         secret.encode("utf-8"),
         body,
@@ -62,11 +73,4 @@ async def verify_webhook_signature(request: Request):
             "message": "서명이 일치하지 않습니다."
         })
 
-    return True
-
-
-async def verify_webhook(request: Request):
-    """API Key + 서명 동시 검증 (Webhook 엔드포인트용)"""
-    await verify_api_key(request)
-    await verify_webhook_signature(request)
     return True
