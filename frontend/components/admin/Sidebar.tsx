@@ -14,6 +14,7 @@ const menuItems = [
     icon: "move_to_inbox",
     label: "미분류 처리",
   },
+  { href: "/admin/webhook-test", icon: "science", label: "Webhook 테스트" },
   // { href: "/admin/vectors", icon: "database", label: "벡터DB 관리" },
 ];
 

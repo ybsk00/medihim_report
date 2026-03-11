@@ -22,55 +22,38 @@ async def _download_stt_text(url: str) -> str:
         return response.text
 
 
-async def _process_consultation(data: dict):
-    """백그라운드: 상담 등록 → 파이프라인 실행 (R1 + R4 자동 생성)"""
+async def _process_consultation_with_id(consultation_id: str, data: dict):
+    """백그라운드: STT 확보 → 파이프라인 실행 (R1 + R4 자동 생성)"""
     db = get_supabase()
-    consultation_id = None
 
     try:
         # 1. STT 텍스트 확보
         stt_text = data.get("stt_text", "")
 
-        # stt_file_url이 있으면 다운로드 (S3 Presigned URL)
+        # stt_file_url이 있으면 S3에서 다운로드
         if data.get("stt_file_url"):
             stt_text = await _download_stt_text(data["stt_file_url"])
+            # 다운로드한 텍스트로 DB 업데이트
+            db.table("consultations").update({
+                "original_text": stt_text,
+            }).eq("id", consultation_id).execute()
 
         if not stt_text or not stt_text.strip():
             raise ValueError("STT 텍스트가 비어있습니다.")
 
-        logger.info(f"[Webhook] STT received: {len(stt_text)} chars")
+        logger.info(f"[Webhook] STT ready: {len(stt_text)} chars, consultation: {consultation_id}")
 
-        # 2. 기존 상담 확인 (같은 고객명 + 회차)
-        consultation_round = data.get("consultation_round", 1)
-
-        # 3. 상담 등록
-        record = {
-            "customer_name": data["customer_name"],
-            "customer_email": data.get("customer_email", ""),
-            "original_text": stt_text,
-            "hospital_name": data.get("hospital_name", ""),
-            "doctor_name": data.get("doctor_name", ""),
-            "concern_area": data.get("concern_area", ""),
-            "consultation_round": consultation_round,
-            "status": "processing",
-        }
-
-        result = db.table("consultations").insert(record).execute()
-        consultation_id = result.data[0]["id"]
-        logger.info(f"[Webhook] Created consultation: {consultation_id}")
-
-        # 4. 파이프라인 자동 실행 (R1 + R4)
+        # 2. 파이프라인 자동 실행 (R1 + R4)
         from agents.pipeline import run_pipeline
         await run_pipeline(consultation_id)
 
     except Exception as e:
         logger.error(f"[Webhook] Processing failed: {e}", exc_info=True)
-        if consultation_id:
-            db = get_supabase()
-            db.table("consultations").update({
-                "status": "report_failed",
-                "error_message": str(e),
-            }).eq("id", consultation_id).execute()
+        db = get_supabase()
+        db.table("consultations").update({
+            "status": "report_failed",
+            "error_message": str(e),
+        }).eq("id", consultation_id).execute()
 
 
 @router.post("/consultation")
@@ -81,17 +64,38 @@ async def receive_consultation(
 ):
     """
     이뽀 앱에서 상담 STT 데이터 수신.
-    백그라운드에서 R1(의사용) + R4(환자용) 리포트 자동 생성.
+    즉시 consultation_id를 반환하고, 백그라운드에서 R1(의사용) + R4(환자용) 리포트 자동 생성.
     """
     logger.info(
         f"[Webhook] Received: customer={data.customer_name}, round={data.consultation_round}"
     )
 
-    # 백그라운드에서 처리 (즉시 200 응답)
-    background_tasks.add_task(_process_consultation, data.model_dump())
+    # 상담 먼저 등록 (consultation_id 확보)
+    db = get_supabase()
+    stt_text = data.stt_text or ""
+
+    record = {
+        "customer_name": data.customer_name,
+        "customer_email": data.customer_email or "",
+        "original_text": stt_text or "(stt_file_url로 다운로드 예정)",
+        "hospital_name": data.hospital_name or "",
+        "doctor_name": data.doctor_name or "",
+        "concern_area": data.concern_area or "",
+        "consultation_round": data.consultation_round,
+        "status": "processing",
+    }
+    result = db.table("consultations").insert(record).execute()
+    consultation_id = result.data[0]["id"]
+    logger.info(f"[Webhook] Created consultation: {consultation_id}")
+
+    # 백그라운드에서 파이프라인 실행 (즉시 200 응답)
+    background_tasks.add_task(
+        _process_consultation_with_id, consultation_id, data.model_dump()
+    )
 
     return {
         "success": True,
+        "consultation_id": consultation_id,
         "message": "상담 데이터 수신 완료. 리포트 자동 생성을 시작합니다.",
     }
 
