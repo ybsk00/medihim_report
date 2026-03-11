@@ -190,7 +190,8 @@ export default function EmbedClient({
   const data = report as ReportData;
 
   return (
-    <div ref={containerRef} className="font-[Noto_Sans_JP] bg-[#FAFAFA]">
+    <div ref={containerRef} className="font-[Noto_Sans_JP] bg-[#FAFAFA] min-h-screen">
+      <div className="max-w-[480px] mx-auto bg-[#FAFAFA] min-h-screen shadow-[0_0_20px_rgba(0,0,0,0.05)]">
       {/* Header */}
       <ReportHeader title={data.title} date={data.date} />
 
@@ -279,6 +280,7 @@ export default function EmbedClient({
 
       {/* Footer */}
       <ReportFooter />
+      </div>
     </div>
   );
 }

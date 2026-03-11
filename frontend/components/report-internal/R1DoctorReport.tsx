@@ -69,7 +69,7 @@ export default function R1DoctorReport({ data }: Props) {
       </header>
 
       {/* Sections */}
-      <div className="px-4 py-6 space-y-8 max-w-[640px] mx-auto">
+      <div className="px-4 py-6 space-y-8 max-w-[480px] mx-auto">
 
         {/* Section 1: 환자 개요 */}
         {s1 && (
