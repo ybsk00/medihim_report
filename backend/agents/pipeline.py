@@ -18,6 +18,7 @@ from agents.report_reviewer import review_report
 # from agents.r2_director_writer import write_r2_report
 # from agents.r3_executive_writer import write_r3_report
 from agents.r1_doctor_writer import write_r1_report
+from services.ippeo_callback import notify_report_ready
 
 logger = logging.getLogger(__name__)
 
@@ -345,6 +346,11 @@ async def run_pipeline(consultation_id: str):
                 "status": "report_ready",
                 "error_message": f"[폴백] {str(e)}",
             })
+            # 폴백이라도 이뽀에 콜백 전송
+            try:
+                await notify_report_ready(consultation_id)
+            except Exception as cb_err:
+                logger.warning(f"[Pipeline:{consultation_id[:8]}] Fallback callback failed: {cb_err}")
         except Exception as fallback_err:
             logger.error(f"[Pipeline:{consultation_id[:8]}] Fallback save failed: {fallback_err}")
             await _update_consultation(consultation_id, {
@@ -635,9 +641,15 @@ async def _generate_all_reports(
         logger.info(f"[Pipeline:{consultation_id[:8]}] R4 fallback saved")
 
     # ========================================
-    # Step 8: consultation status 업데이트
+    # Step 8: consultation status 업데이트 + 이뽀 콜백
     # ========================================
     await _update_consultation(consultation_id, {"status": "report_ready"})
+
+    # 이뽀 앱에 report_ready 콜백 전송
+    try:
+        await notify_report_ready(consultation_id)
+    except Exception as cb_err:
+        logger.warning(f"[Pipeline:{consultation_id[:8]}] Callback failed (non-blocking): {cb_err}")
 
 
 

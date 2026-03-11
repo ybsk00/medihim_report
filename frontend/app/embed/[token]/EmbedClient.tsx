@@ -12,7 +12,8 @@ import Section7Risks from "@/components/report/Section7Risks";
 import Section8VisitDate from "@/components/report/Section8VisitDate";
 import Section9IppeoMessage from "@/components/report/Section9IppeoMessage";
 import ReportFooter from "@/components/report/ReportFooter";
-import { type ReportData, isV3Report } from "@/lib/api";
+import R1DoctorReport from "@/components/report-internal/R1DoctorReport";
+import { type ReportData, type R1ReportData, isV3Report } from "@/lib/api";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "/api";
@@ -28,6 +29,7 @@ export default function EmbedClient({
   const [error, setError] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [report, setReport] = useState<any>(null);
+  const [reportType, setReportType] = useState<string>("r4");
   const [currentLang, setCurrentLang] = useState(lang);
   const containerRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
@@ -55,6 +57,7 @@ export default function EmbedClient({
       }
       const data = await res.json();
       setReport(data.report_data);
+      setReportType(data.report_type || "r4");
       setError(null);
       postToParent("REPORT_LOADED", {
         token,
@@ -154,6 +157,17 @@ export default function EmbedClient({
         <div className="text-center px-6">
           <p className="text-sm font-bold text-gray-700 mb-1">表示できません</p>
           <p className="text-xs text-gray-500">{error || "データがありません。"}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // R1 의사용 리포트 렌더링
+  if (reportType === "r1") {
+    return (
+      <div ref={containerRef} className="font-[Pretendard,Noto_Sans_KR,sans-serif] bg-[#FAFAFA] min-h-screen">
+        <div className="max-w-[640px] mx-auto px-4 py-6">
+          <R1DoctorReport data={report as R1ReportData} />
         </div>
       </div>
     );
