@@ -22,6 +22,131 @@ from agents.r1_doctor_writer import write_r1_report
 logger = logging.getLogger(__name__)
 
 
+def _build_fallback_r4(customer_name: str, classification: str) -> dict:
+    """R4 환자용 폴백 리포트 (일본어, 10섹션 구조 유지)"""
+    category_ja = "皮膚科" if classification == "dermatology" else "美容整形"
+    today = datetime.now(timezone(timedelta(hours=9))).strftime("%Y年%m月%d日")
+
+    return {
+        "title": f"{customer_name}様 ご相談リポート",
+        "date": today,
+        "section1_key_summary": {
+            "points": [
+                "今回のご相談内容だけでは、詳細なリポートを作成するための情報が不足しておりました。",
+                "ご不便をおかけし申し訳ございません。",
+            ]
+        },
+        "section2_cause_analysis": {
+            "intro": "ご相談内容の情報量が限られていたため、原因・背景の詳細な分析が難しい状況です。",
+            "causes": [
+                "相談時間が短かった、または具体的な症状・ご希望の共有が少なかった可能性があります。",
+            ],
+            "conclusion": "次回のご相談では、気になる部位やご希望を具体的にお伝えいただくと、より的確な分析が可能です。",
+        },
+        "section3_recommendation": {
+            "primary": {
+                "label": "次回ご相談のおすすめ",
+                "items": [
+                    "気になる部位の写真をご準備ください。",
+                    f"{category_ja}に関する具体的なお悩みを事前にメモしておくとスムーズです。",
+                    "過去の施術歴や服用中のお薬がある場合はお知らせください。",
+                ],
+            },
+            "secondary": {"label": "", "items": []},
+            "goal": "追加のご相談をいただければ、詳細なリポートをお届けいたします。",
+        },
+        "section4_recovery": {
+            "timeline": [],
+            "note": "具体的な施術プランが決まった段階で、回復スケジュールをご案内いたします。",
+        },
+        "section5_scar_info": {
+            "points": ["施術内容が確定した際に、傷跡に関する詳しいご案内をいたします。"],
+        },
+        "section6_precautions": {
+            "points": ["次回のご相談までに特別な注意事項はございません。"],
+        },
+        "section7_risks": {
+            "points": ["施術プランが具体化した段階で、リスクについて詳しくご説明いたします。"],
+        },
+        "section8_cost_estimate": {
+            "items": ["ご相談内容が不足しているため、費用目安のご案内は控えさせていただきます。"],
+            "note": "次回ご相談時に具体的な費用範囲をお伝えいたします。",
+        },
+        "section9_visit_date": {
+            "date": None,
+            "note": "追加のご相談後にご来院スケジュールをご提案いたします。",
+        },
+        "section10_ippeo_message": {
+            "paragraphs": [
+                f"{customer_name}様、今回は十分な情報をお届けできず申し訳ございません。",
+                "追加のご相談をいただければ、より詳しい分析結果とご提案をリポートとしてお届けいたします。",
+                "お気軽にもう一度ご相談ください。IPPEOがしっかりサポートいたします。",
+            ],
+            "final_summary": "次回のご相談で、より充実したリポートをお届けいたします。お待ちしております。",
+        },
+    }
+
+
+def _build_fallback_r1(customer_name: str, classification: str) -> dict:
+    """R1 의사용 폴백 리포트 (한국어, 7섹션 구조 유지)"""
+    category_ko = "피부과" if classification == "dermatology" else "성형외과"
+    today = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+
+    return {
+        "title": f"{customer_name} 환자 사전 브리핑",
+        "date": today,
+        "section1_patient_overview": {
+            "name": customer_name,
+            "classification": category_ko,
+            "cta_level": "—",
+            "consultation_date": today,
+            "summary": "상담 정보가 부족하여 상세 리포트 생성에 실패했습니다. 추가 상담이 필요합니다.",
+        },
+        "section2_chief_complaints": {
+            "summary": "상담 내용이 충분하지 않아 핵심 호소를 파악하기 어려웠습니다.",
+            "points": [
+                "상담 시간이 짧았거나, 구체적인 고민 공유가 부족했을 수 있습니다.",
+                "추가 상담 시 확인이 필요합니다.",
+            ],
+        },
+        "section3_mentioned_procedures": {
+            "procedures": [],
+        },
+        "section4_medical_context": {
+            "current_state": "정보 부족으로 의학적 맥락 분석 불가.",
+            "related_history": "",
+            "key_concerns": [
+                "추후 상담 시 다음 내용을 확인해주세요:",
+                "1) 구체적인 고민 부위와 증상",
+                "2) 과거 시술/수술 이력",
+                "3) 현재 복용 약물 여부",
+                "4) 알레르기 이력",
+            ],
+        },
+        "section5_patient_concerns": {
+            "concerns": [],
+        },
+        "section6_visit_intent": {
+            "cta_level": "—",
+            "expected_visit": "미정",
+            "evidence": [],
+        },
+        "section7_doctor_notes": {
+            "preliminary_opinion": "상담 정보가 부족하여 사전 소견 작성이 어렵습니다.",
+            "recommended_tests": [],
+            "cautions": [
+                "추가 상담 시 아래 항목 중심으로 대화를 유도해주시면 리포트 생성에 도움이 됩니다:",
+                "• 환자가 원하는 변화/결과 (구체적 기대치)",
+                "• 현재 불편하거나 신경 쓰이는 부위",
+                "• 시술/수술에 대한 두려움이나 우려사항",
+                "• 예산 범위와 희망 시기",
+                "• 다른 병원 상담 경험 (비교 정보)",
+            ],
+        },
+    }
+
+
+
 async def _log_agent(
     consultation_id: str,
     agent_name: str,
@@ -205,12 +330,27 @@ async def run_pipeline(consultation_id: str):
         )
 
     except Exception as e:
-        logger.error(f"[Pipeline:{consultation_id[:8]}] FAILED: {str(e)}", exc_info=True)
-        await _update_consultation(consultation_id, {
-            "status": "report_failed",
-            "error_message": str(e),
-        })
+        logger.error(f"[Pipeline:{consultation_id[:8]}] FAILED, saving fallback reports: {str(e)}", exc_info=True)
         await _log_agent(consultation_id, "pipeline", None, None, 0, "failed", str(e))
+
+        # 폴백 리포트 저장 (R1 + R4)
+        fallback_classification = consultation.get("classification") or "plastic_surgery"
+        try:
+            fallback_r4 = _build_fallback_r4(customer_name, fallback_classification)
+            await _save_report(consultation_id, "r4", fallback_r4, [], 0, 3)
+            fallback_r1 = _build_fallback_r1(customer_name, fallback_classification)
+            await _save_report(consultation_id, "r1", fallback_r1, [], 0, 3)
+            logger.info(f"[Pipeline:{consultation_id[:8]}] Fallback R1+R4 saved")
+            await _update_consultation(consultation_id, {
+                "status": "report_ready",
+                "error_message": f"[폴백] {str(e)}",
+            })
+        except Exception as fallback_err:
+            logger.error(f"[Pipeline:{consultation_id[:8]}] Fallback save failed: {fallback_err}")
+            await _update_consultation(consultation_id, {
+                "status": "report_failed",
+                "error_message": str(e),
+            })
 
 
 async def resume_pipeline(consultation_id: str, classification: str):
@@ -396,8 +536,12 @@ async def _generate_all_reports(
             rag_results)
         logger.info(f"[Pipeline:{consultation_id[:8]}] R1 complete")
     except Exception as e:
-        logger.error(f"[Pipeline:{consultation_id[:8]}] R1 failed: {str(e)}", exc_info=True)
+        logger.error(f"[Pipeline:{consultation_id[:8]}] R1 failed, saving fallback: {str(e)}", exc_info=True)
         await _log_agent(consultation_id, "r1_writer", None, None, 0, "failed", str(e))
+        # 폴백 R1 리포트 저장
+        fallback_r1 = _build_fallback_r1(customer_name, classification)
+        await _save_report(consultation_id, "r1", fallback_r1, rag_results, 0, 3)
+        logger.info(f"[Pipeline:{consultation_id[:8]}] R1 fallback saved")
 
     # [R2-R3 비활성화] R4 테스트 후 활성화 예정
     # r2_data = None
@@ -483,8 +627,12 @@ async def _generate_all_reports(
         logger.info(f"[Pipeline:{consultation_id[:8]}] R4 complete")
 
     except Exception as e:
-        logger.error(f"[Pipeline:{consultation_id[:8]}] R4 failed: {str(e)}", exc_info=True)
+        logger.error(f"[Pipeline:{consultation_id[:8]}] R4 failed, saving fallback: {str(e)}", exc_info=True)
         await _log_agent(consultation_id, "r4_writer", None, None, 0, "failed", str(e))
+        # 폴백 R4 리포트 저장
+        fallback_r4 = _build_fallback_r4(customer_name, classification)
+        await _save_report(consultation_id, "r4", fallback_r4, rag_results, 0, 3)
+        logger.info(f"[Pipeline:{consultation_id[:8]}] R4 fallback saved")
 
     # ========================================
     # Step 8: consultation status 업데이트
