@@ -4,31 +4,14 @@ import hmac
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone, timedelta
 
 import httpx
 
 logger = logging.getLogger(__name__)
 
-JST = timezone(timedelta(hours=9))
-
 
 async def notify_report_ready(consultation_id: str):
-    """리포트 생성 완료 시 이뽀 앱에 콜백 전송 (리포트 타입별 개별 전송)
-
-    이뽀 기대 포맷:
-    {
-            "ippeo_user_id": "...",
-      "ippeo_consultation_id": "...",
-      "consultation_id": "...",
-      "consultation_round": 1,
-      "report_token": "...",
-      "report_type": "r4",
-      "embed_url": { "ja": "...", "ko": "..." },
-      "status": "report_ready",
-      "created_at": "2026-03-11T15:03:22+09:00"
-    }
-    """
+    """리포트 생성 완료 시 이뽀 앱에 콜백 전송 (1건 통합)"""
     from config import IPPEO_WEBHOOK_URL, IPPEO_WEBHOOK_SECRET, IPPEO_API_KEY, FRONTEND_URL
     from services.supabase_client import get_supabase
 
@@ -42,7 +25,7 @@ async def notify_report_ready(consultation_id: str):
     # 상담 데이터 조회
     consultation = (
         db.table("consultations")
-        .select("id, status, customer_name, customer_id, ippeo_consultation_id, consultation_round, error_message")
+        .select("id, status, customer_name, consultation_round, error_message")
         .eq("id", consultation_id)
         .single()
         .execute()
@@ -52,23 +35,18 @@ async def notify_report_ready(consultation_id: str):
         return
 
     c = consultation.data
-    ippeo_user_id = c.get("customer_id") or ""
-    ippeo_consultation_id = c.get("ippeo_consultation_id") or ""
     consultation_round = c.get("consultation_round") or 1
-    now_jst = datetime.now(JST).isoformat()
 
-    # 실패 시 에러 콜백
+    # 실패 시
     if c["status"] == "report_failed":
-        error_payload = {
-                        "ippeo_user_id": ippeo_user_id,
-            "ippeo_consultation_id": ippeo_consultation_id,
+        payload = {
             "consultation_id": consultation_id,
             "consultation_round": consultation_round,
             "status": "report_failed",
+            "customer_name": c["customer_name"],
             "error_message": c.get("error_message") or "리포트 생성 실패",
-            "created_at": now_jst,
         }
-        await _send_callback(callback_url, error_payload, IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET)
+        await _send_callback(callback_url, payload, IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET)
         return
 
     # 리포트 조회
@@ -81,35 +59,32 @@ async def notify_report_ready(consultation_id: str):
 
     embed_base = f"{FRONTEND_URL}/embed"
 
-    # 리포트 타입별 개별 콜백 전송
+    payload = {
+        "consultation_id": consultation_id,
+        "consultation_round": consultation_round,
+        "status": c["status"],
+        "customer_name": c["customer_name"],
+    }
+
     for r in reports.data or []:
         token = r["access_token"]
-        report_type = r["report_type"]
-
-        # embed_url 구성
-        if report_type == "r4":
-            embed_url = {
-                "ja": f"{embed_base}/{token}?lang=ja",
-                "ko": f"{embed_base}/{token}?lang=ko",
+        if r["report_type"] == "r4":
+            payload["patient_report"] = {
+                "report_token": token,
+                "embed_url": {
+                    "ja": f"{embed_base}/{token}?lang=ja",
+                    "ko": f"{embed_base}/{token}?lang=ko",
+                },
             }
-        else:
-            embed_url = {
-                "ko": f"{embed_base}/{token}?lang=ko",
+        elif r["report_type"] == "r1":
+            payload["doctor_report"] = {
+                "report_token": token,
+                "embed_url": {
+                    "ko": f"{embed_base}/{token}?lang=ko",
+                },
             }
 
-        payload = {
-                        "ippeo_user_id": ippeo_user_id,
-            "ippeo_consultation_id": ippeo_consultation_id,
-            "consultation_id": consultation_id,
-            "consultation_round": consultation_round,
-            "report_token": token,
-            "report_type": report_type,
-            "embed_url": embed_url,
-            "status": "report_ready",
-            "created_at": now_jst,
-        }
-
-        await _send_callback(callback_url, payload, IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET)
+    await _send_callback(callback_url, payload, IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET)
 
 
 async def _send_callback(url: str, payload: dict, api_key: str, secret: str):
@@ -127,9 +102,6 @@ async def _send_callback(url: str, payload: dict, api_key: str, secret: str):
         ).hexdigest()
         headers["X-Signature"] = f"sha256={sig}"
 
-    report_type = payload.get("report_type", "unknown")
-    event = payload.get("event", "unknown")
-
     for attempt in range(3):
         try:
             async with httpx.AsyncClient(timeout=30) as client:
@@ -137,21 +109,21 @@ async def _send_callback(url: str, payload: dict, api_key: str, secret: str):
 
             if res.status_code < 300:
                 logger.info(
-                    f"[Callback] {event} ({report_type}) sent to ippeo "
+                    f"[Callback] Report ready sent to ippeo "
                     f"(consultation={payload.get('consultation_id', '')[:8]}, status={res.status_code})"
                 )
                 return
             else:
                 logger.warning(
                     f"[Callback] Ippeo returned {res.status_code}: {res.text[:200]} "
-                    f"(attempt {attempt + 1}/3, type={report_type})"
+                    f"(attempt {attempt + 1}/3)"
                 )
         except Exception as e:
             logger.warning(
-                f"[Callback] Failed (attempt {attempt + 1}/3, type={report_type}): {e}"
+                f"[Callback] Failed (attempt {attempt + 1}/3): {e}"
             )
 
     logger.error(
-        f"[Callback] All 3 attempts failed for {report_type} "
+        f"[Callback] All 3 attempts failed "
         f"(consultation={payload.get('consultation_id', '')[:8]})"
     )
