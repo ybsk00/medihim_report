@@ -18,8 +18,7 @@ async def notify_report_ready(consultation_id: str):
 
     이뽀 기대 포맷:
     {
-      "event": "report_ready",
-      "ippeo_user_id": "...",
+            "ippeo_user_id": "...",
       "ippeo_consultation_id": "...",
       "consultation_id": "...",
       "consultation_round": 1,
@@ -61,8 +60,7 @@ async def notify_report_ready(consultation_id: str):
     # 실패 시 에러 콜백
     if c["status"] == "report_failed":
         error_payload = {
-            "event": "report_failed",
-            "ippeo_user_id": ippeo_user_id,
+                        "ippeo_user_id": ippeo_user_id,
             "ippeo_consultation_id": ippeo_consultation_id,
             "consultation_id": consultation_id,
             "consultation_round": consultation_round,
@@ -100,8 +98,7 @@ async def notify_report_ready(consultation_id: str):
             }
 
         payload = {
-            "event": "report_ready",
-            "ippeo_user_id": ippeo_user_id,
+                        "ippeo_user_id": ippeo_user_id,
             "ippeo_consultation_id": ippeo_consultation_id,
             "consultation_id": consultation_id,
             "consultation_round": consultation_round,
