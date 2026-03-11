@@ -1,5 +1,3 @@
-// @ts-nocheck
-// [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
 "use client";
 
 import { R1ReportData } from "@/lib/api";

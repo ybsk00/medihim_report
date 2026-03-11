@@ -96,8 +96,46 @@ export interface Report {
   };
 }
 
-// [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
-// R1ReportData, R2ReportData, R3ReportData 인터페이스는
+// R1 의사용 리포트 데이터 (한국어, 7섹션)
+export interface R1ReportData {
+  title: string;
+  date: string;
+  section1_patient_overview: {
+    name: string;
+    classification: string;
+    cta_level: string;
+    consultation_date: string;
+    summary?: string;
+  };
+  section2_chief_complaints: {
+    summary?: string;
+    points: string[];
+  };
+  section3_mentioned_procedures: {
+    procedures: { name: string; patient_attitude: string; context: string }[];
+  };
+  section4_medical_context: {
+    current_state: string;
+    related_history?: string;
+    key_concerns: string[];
+  };
+  section5_patient_concerns: {
+    concerns: { priority: string; concern: string }[];
+  };
+  section6_visit_intent: {
+    cta_level: string;
+    expected_visit: string;
+    evidence: string[];
+  };
+  section7_doctor_notes: {
+    preliminary_opinion?: string;
+    recommended_tests: string[];
+    cautions: string[];
+  };
+  [key: string]: unknown;
+}
+
+// [R1-R3 비활성화] R2ReportData, R3ReportData 인터페이스는
 // frontend/components/report-internal/ 파일 참조
 
 // 리포트 데이터 (V3 9섹션 + V4 10섹션 호환)

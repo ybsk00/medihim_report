@@ -128,7 +128,8 @@ class IppeoConsultationRequest(BaseModel):
     """이뽀 → 우리: 상담 STT 데이터 전송"""
     customer_name: str
     customer_email: Optional[str] = ""
-    stt_text: str  # STT 원문 텍스트
+    stt_text: Optional[str] = ""  # STT 원문 텍스트 (직접 전달)
+    stt_file_url: Optional[str] = ""  # S3 Presigned URL (10분 유효)
     consultation_round: int = 1  # 1차, 2차, 3차...
     hospital_name: Optional[str] = ""
     doctor_name: Optional[str] = ""

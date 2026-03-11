@@ -27,19 +27,18 @@ async def list_reports():
     return {"data": result.data}
 
 
-# [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
-# @router.get("/by-consultation/{consultation_id}")
-# async def list_reports_by_consultation(consultation_id: str):
-#     """해당 상담의 R1~R4 전체 리포트 조회"""
-#     db = get_supabase()
-#     result = (
-#         db.table("reports")
-#         .select("*, consultations(customer_name, customer_email, customer_line_id, classification, cta_level)")
-#         .eq("consultation_id", consultation_id)
-#         .order("report_type")
-#         .execute()
-#     )
-#     return {"data": result.data}
+@router.get("/by-consultation/{consultation_id}")
+async def list_reports_by_consultation(consultation_id: str):
+    """해당 상담의 R1~R4 전체 리포트 조회"""
+    db = get_supabase()
+    result = (
+        db.table("reports")
+        .select("*, consultations(customer_name, customer_email, customer_line_id, classification, cta_level)")
+        .eq("consultation_id", consultation_id)
+        .order("report_type")
+        .execute()
+    )
+    return {"data": result.data}
 
 
 @router.post("/delete")

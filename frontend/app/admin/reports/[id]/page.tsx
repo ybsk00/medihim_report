@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { use } from "react";
-import { reportAPI, isV3Report, type Report, type ReportData } from "@/lib/api";
-// [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
-// import R1DoctorReport from "@/components/report-internal/R1DoctorReport";
+import { reportAPI, isV3Report, type Report, type ReportData, type R1ReportData } from "@/lib/api";
+import R1DoctorReport from "@/components/report-internal/R1DoctorReport";
+// [R1-R3 비활성화] R2/R3는 28일 R4 테스트 후 활성화 예정
 // import R2DirectorReport from "@/components/report-internal/R2DirectorReport";
 // import R3ExecutiveReport from "@/components/report-internal/R3ExecutiveReport";
 
@@ -153,6 +153,7 @@ export default function ReportDetailPage({
   const consultation = report.consultations;
   const customerName = consultation?.customer_name || "고객";
   const customerEmail = consultation?.customer_email || "";
+  const isR1 = report.report_type === "r1";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reportData: any = lang === "ko" && report.report_data_ko
@@ -172,88 +173,103 @@ export default function ReportDetailPage({
         </Link>
         <h2 className="text-xl font-bold text-slate-800">
           {customerName} 리포트 검토
+          <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            isR1 ? "bg-purple-100 text-purple-800" : "bg-coral/10 text-coral"
+          }`}>
+            {isR1 ? "👨‍⚕️ 의사용" : "👤 환자용"}
+          </span>
         </h2>
       </header>
 
       <div className="p-8 max-w-[1200px] mx-auto w-full space-y-6">
-        {/* [R1-R3 비활성화] R1~R4 Tab Navigation 숨김 */}
-
         {reportData && (
           <>
-            {/* Language Toggle */}
-            <div className="flex items-center justify-between">
-              <div className="flex bg-slate-100 rounded-lg p-0.5">
-                <button
-                  onClick={() => setLang("ja")}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    lang === "ja" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"
-                  }`}
-                >
-                  일본어 원문
-                </button>
-                <button
-                  onClick={() => {
-                    if (lang === "ko") return;
-                    handleTranslate();
-                  }}
-                  disabled={translating}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
-                    lang === "ko"
-                      ? "bg-white text-slate-800 shadow-sm"
-                      : "text-slate-500"
-                  } ${translating ? "opacity-50" : ""}`}
-                >
-                  {translating && (
-                    <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
-                  )}
-                  한글 번역
-                </button>
-              </div>
-            </div>
-
-            {/* Report Preview — R4 480px 모바일 프레임 */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
-              <div className="mx-auto" style={{ maxWidth: "480px" }}>
-                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-lg bg-report-bg">
-                  {/* Header */}
-                  <div className="glass-header border-b border-gray-100 px-5 py-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <img src="/ippeo-logo.png" alt="IPPEO" className="w-6 h-6 rounded" />
-                      <h1 className="text-sm font-bold text-text-dark tracking-tight font-[Noto_Sans_JP]">
-                        IPPEO | オンライン相談リポート
-                      </h1>
-                    </div>
-                    <h2 className="text-xl font-black text-text-dark leading-tight font-[Noto_Sans_JP]">
-                      {reportData.title}
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-2 font-medium font-[Noto_Sans_JP]">
-                      {reportData.date}
-                    </p>
-                  </div>
-
-                  <div className="p-5 space-y-8 font-[Noto_Sans_JP]">
-                    {isV3 ? (
-                      <R4Sections reportData={reportData} lang={lang} />
-                    ) : (
-                      <div className="text-center py-8">
-                        <p className="text-sm text-gray-500">이 리포트는 구 형식(V2)입니다. 재생성을 권장합니다.</p>
-                      </div>
+            {/* Language Toggle — R1은 한국어 전용이므로 숨김 */}
+            {!isR1 && (
+              <div className="flex items-center justify-between">
+                <div className="flex bg-slate-100 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setLang("ja")}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      lang === "ja" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"
+                    }`}
+                  >
+                    일본어 원문
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (lang === "ko") return;
+                      handleTranslate();
+                    }}
+                    disabled={translating}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                      lang === "ko"
+                        ? "bg-white text-slate-800 shadow-sm"
+                        : "text-slate-500"
+                    } ${translating ? "opacity-50" : ""}`}
+                  >
+                    {translating && (
+                      <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
                     )}
-                  </div>
+                    한글 번역
+                  </button>
+                </div>
+              </div>
+            )}
 
-                  {/* Footer */}
-                  <div className="bg-white border-t border-gray-100 p-6 text-center font-[Noto_Sans_JP]">
-                    <div className="flex justify-center items-center gap-2 mb-4">
-                      <img src="/ippeo-logo.png" alt="IPPEO" className="w-6 h-6 rounded" />
-                      <span className="text-sm font-bold text-text-dark">IPPEO | オンライン相談リポート</span>
+            {/* Report Preview */}
+            {isR1 ? (
+              /* R1 의사용 리포트 (한국어, 보라색 테마) */
+              <div className="bg-white rounded-xl border border-purple-200 shadow-sm p-8">
+                <div className="mx-auto" style={{ maxWidth: "640px" }}>
+                  <R1DoctorReport data={reportData as R1ReportData} />
+                </div>
+              </div>
+            ) : (
+              /* R4 환자용 리포트 (일본어, 480px 모바일 프레임) */
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+                <div className="mx-auto" style={{ maxWidth: "480px" }}>
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-lg bg-report-bg">
+                    {/* Header */}
+                    <div className="glass-header border-b border-gray-100 px-5 py-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <img src="/ippeo-logo.png" alt="IPPEO" className="w-6 h-6 rounded" />
+                        <h1 className="text-sm font-bold text-text-dark tracking-tight font-[Noto_Sans_JP]">
+                          IPPEO | オンライン相談リポート
+                        </h1>
+                      </div>
+                      <h2 className="text-xl font-black text-text-dark leading-tight font-[Noto_Sans_JP]">
+                        {reportData.title}
+                      </h2>
+                      <p className="text-xs text-gray-500 mt-2 font-medium font-[Noto_Sans_JP]">
+                        {reportData.date}
+                      </p>
                     </div>
-                    <p className="text-[10px] text-gray-400 leading-relaxed">
-                      本リポートはカウンセリング時の内容を元に作成されたものであり、確定的な診断や治療を保証するものではありません。
-                    </p>
+
+                    <div className="p-5 space-y-8 font-[Noto_Sans_JP]">
+                      {isV3 ? (
+                        <R4Sections reportData={reportData} lang={lang} />
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="text-sm text-gray-500">이 리포트는 구 형식(V2)입니다. 재생성을 권장합니다.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="bg-white border-t border-gray-100 p-6 text-center font-[Noto_Sans_JP]">
+                      <div className="flex justify-center items-center gap-2 mb-4">
+                        <img src="/ippeo-logo.png" alt="IPPEO" className="w-6 h-6 rounded" />
+                        <span className="text-sm font-bold text-text-dark">IPPEO | オンライン相談リポート</span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 leading-relaxed">
+                        本リポートはカウンセリング時の内容を元に作成されたものであり、確定的な診断や治療を保証するものではありません。
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Action Buttons */}
             {report.status === "draft" && (

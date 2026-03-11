@@ -16,9 +16,10 @@ const CLASSIFICATION_MAP: Record<string, string> = {
   dermatology: "💊 피부과",
 };
 
-// [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
-// const REPORT_TYPE_BADGE = { r1: ..., r2: ..., r3: ..., r4: ... };
-// const REPORT_TYPE_TABS = [...];
+const REPORT_TYPE_BADGE: Record<string, { label: string; color: string }> = {
+  r1: { label: "👨‍⚕️ 의사용", color: "bg-purple-100 text-purple-800" },
+  r4: { label: "👤 환자용", color: "bg-coral/10 text-coral" },
+};
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -27,6 +28,7 @@ export default function ReportsPage() {
   const [deleting, setDeleting] = useState(false);
   const [approving, setApproving] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
 
   const fetchData = () => {
     setLoading(true);
@@ -90,15 +92,26 @@ export default function ReportsPage() {
 
   const draftCount = reports.filter((r) => r.status === "draft" || r.status === "rejected").length;
 
-  const filteredReports = statusFilter === "all"
-    ? reports
-    : reports.filter((r) => r.status === statusFilter);
+  const filteredReports = reports.filter((r) => {
+    if (statusFilter !== "all" && r.status !== statusFilter) return false;
+    if (typeFilter !== "all" && (r.report_type || "r4") !== typeFilter) return false;
+    return true;
+  });
 
   return (
     <>
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
         <h2 className="text-xl font-bold text-slate-800">리포트 관리</h2>
         <div className="flex items-center gap-3">
+          <select
+            value={typeFilter}
+            onChange={(e) => { setTypeFilter(e.target.value); setSelectedIds(new Set()); }}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="all">유형 전체</option>
+            <option value="r4">👤 환자용 (R4)</option>
+            <option value="r1">👨‍⚕️ 의사용 (R1)</option>
+          </select>
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setSelectedIds(new Set()); }}
@@ -188,6 +201,7 @@ export default function ReportsPage() {
                       />
                     </th>
                     <th className="px-6 py-3 border-b">고객명</th>
+                    <th className="px-6 py-3 border-b">유형</th>
                     <th className="px-6 py-3 border-b">분류</th>
                     <th className="px-6 py-3 border-b">상태</th>
                     <th className="px-6 py-3 border-b">발송일</th>
@@ -222,6 +236,17 @@ export default function ReportsPage() {
                         </td>
                         <td className="px-6 py-4 font-medium text-slate-900">
                           {consultation?.customer_name || "—"}
+                        </td>
+                        <td className="px-6 py-4">
+                          {(() => {
+                            const rt = report.report_type || "r4";
+                            const typeBadge = REPORT_TYPE_BADGE[rt] || REPORT_TYPE_BADGE.r4;
+                            return (
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${typeBadge.color}`}>
+                                {typeBadge.label}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-6 py-4 text-slate-600">
                           {CLASSIFICATION_MAP[consultation?.classification || ""] || "—"}
