@@ -2,7 +2,8 @@
 
 import { useState, useRef } from "react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://ippo-backend-3h7djqxgyq-du.a.run.app";
+// NEXT_PUBLIC_API_URL에 /api가 포함되어 있으므로 제거
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://ippo-backend-3h7djqxgyq-du.a.run.app/api").replace(/\/api$/, "");
 const API_KEY = "***REMOVED***";
 const WEBHOOK_SECRET = "***REMOVED***";
 
