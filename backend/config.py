@@ -17,6 +17,11 @@ NCBI_API_KEY = os.getenv("NCBI_API_KEY", "")
 NCBI_EMAIL = os.getenv("NCBI_EMAIL", "bsyoo1974@gamil.com")
 NCBI_TOOL = os.getenv("NCBI_TOOL", "ADC-GenAI-Platform")
 
+# 이뽀 앱 연동
+IPPEO_API_KEY = os.getenv("IPPEO_API_KEY", "")
+IPPEO_WEBHOOK_SECRET = os.getenv("IPPEO_WEBHOOK_SECRET", "")
+IPPEO_WEBHOOK_URL = os.getenv("IPPEO_WEBHOOK_URL", "")
+
 # 벡터DB 구축 대상 YouTube 채널 (피부과 5 + 성형외과 6)
 TARGET_CHANNELS = [
     # 피부과

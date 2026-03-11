@@ -118,3 +118,18 @@ class DashboardStats(BaseModel):
     cta_hot: int
     cta_warm: int
     cta_cool: int
+
+
+
+# ============================================
+# 이뽀 앱 연동 Models
+# ============================================
+class IppeoConsultationRequest(BaseModel):
+    """이뽀 → 우리: 상담 STT 데이터 전송"""
+    customer_name: str
+    customer_email: Optional[str] = ""
+    stt_text: str  # STT 원문 텍스트
+    consultation_round: int = 1  # 1차, 2차, 3차...
+    hospital_name: Optional[str] = ""
+    doctor_name: Optional[str] = ""
+    concern_area: Optional[str] = ""

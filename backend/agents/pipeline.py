@@ -14,10 +14,10 @@ from agents.validator import validate_classification
 from agents.rag_agent import search_relevant_faq
 from agents.report_writer import write_report
 from agents.report_reviewer import review_report
-# [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
-# from agents.r1_doctor_writer import write_r1_report
+# [R2-R3 비활성화] R4 테스트 후 활성화 예정
 # from agents.r2_director_writer import write_r2_report
 # from agents.r3_executive_writer import write_r3_report
+from agents.r1_doctor_writer import write_r1_report
 
 logger = logging.getLogger(__name__)
 
@@ -383,26 +383,24 @@ async def _generate_all_reports(
         {"result_count": len(rag_results)}, duration, "success",
     )
 
-    # [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
-    # r1_data = None
+    # Step 7-R1: 의사 리포트 (한국어) — 이뽀 앱 연동용 활성화
+    r1_data = None
+    try:
+        r1_data = await _write_and_review(
+            consultation_id, "r1", write_r1_report,
+            {"original_text": original_text, "translated_text": translated_text,
+             "intent_extraction": intent, "classification": classification,
+             "rag_results": rag_results, "customer_name": customer_name,
+             "cta_level": cta_level, "cta_signals": cta_signals,
+             "speaker_segments": speaker_segments, "input_lang": input_lang},
+            rag_results)
+        logger.info(f"[Pipeline:{consultation_id[:8]}] R1 complete")
+    except Exception as e:
+        logger.error(f"[Pipeline:{consultation_id[:8]}] R1 failed: {str(e)}", exc_info=True)
+        await _log_agent(consultation_id, "r1_writer", None, None, 0, "failed", str(e))
+
+    # [R2-R3 비활성화] R4 테스트 후 활성화 예정
     # r2_data = None
-    #
-    # # Step 7-R1: 의사 리포트 (한국어)
-    # try:
-    #     r1_data = await _write_and_review(
-    #         consultation_id, "r1", write_r1_report,
-    #         {"original_text": original_text, "translated_text": translated_text,
-    #          "intent_extraction": intent, "classification": classification,
-    #          "rag_results": rag_results, "customer_name": customer_name,
-    #          "cta_level": cta_level, "cta_signals": cta_signals,
-    #          "speaker_segments": speaker_segments, "input_lang": input_lang},
-    #         rag_results)
-    #     logger.info(f"[Pipeline:{consultation_id[:8]}] R1 complete")
-    # except Exception as e:
-    #     logger.error(f"[Pipeline:{consultation_id[:8]}] R1 failed: {str(e)}", exc_info=True)
-    #     await _log_agent(consultation_id, "r1_writer", None, None, 0, "failed", str(e))
-    #
-    # # Step 7-R2: 상담실장 리포트 (한국어, R1 참조)
     # if r1_data:
     #     try:
     #         r2_data = await _write_and_review(
@@ -419,7 +417,6 @@ async def _generate_all_reports(
     # else:
     #     logger.warning(f"[Pipeline:{consultation_id[:8]}] R2 skipped (R1 failed)")
     #
-    # # Step 7-R3: 경영진 리포트 (한국어, R1+R2 참조)
     # if r1_data and r2_data:
     #     try:
     #         await _write_and_review(
@@ -493,6 +490,7 @@ async def _generate_all_reports(
     # Step 8: consultation status 업데이트
     # ========================================
     await _update_consultation(consultation_id, {"status": "report_ready"})
+
 
 
 async def regenerate_report(report_id: str, direction: str):
