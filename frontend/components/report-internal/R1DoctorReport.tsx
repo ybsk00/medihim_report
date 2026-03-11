@@ -6,6 +6,24 @@ interface Props {
   data: R1ReportData;
 }
 
+function SectionTitle({ number, title }: { number: number; title: string }) {
+  return (
+    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+      <span className="block w-1 h-6 bg-purple-500 rounded-full"></span>
+      <span className="text-purple-600 font-black mr-0.5">{String(number).padStart(2, "0")}</span>
+      {title}
+    </h3>
+  );
+}
+
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-white rounded-xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] ${className}`}>
+      {children}
+    </div>
+  );
+}
+
 export default function R1DoctorReport({ data }: Props) {
   const s1 = data.section1_patient_overview;
   const s2 = data.section2_chief_complaints;
@@ -15,187 +33,280 @@ export default function R1DoctorReport({ data }: Props) {
   const s6 = data.section6_visit_intent;
   const s7 = data.section7_doctor_notes;
 
+  const ctaColor = (level: string | undefined) => {
+    const l = (level || "").toLowerCase();
+    if (l === "hot") return "bg-red-500 text-white";
+    if (l === "warm") return "bg-amber-400 text-white";
+    return "bg-blue-400 text-white";
+  };
+
+  const ctaLabel = (level: string | undefined) => {
+    const l = (level || "").toLowerCase();
+    if (l === "hot") return "HOT";
+    if (l === "warm") return "WARM";
+    return "COOL";
+  };
+
   return (
-    <div className="space-y-5">
-      {/* 타이틀 */}
-      <div className="text-center mb-6">
-        <h2 className="text-lg font-bold text-gray-800">{data.title}</h2>
-        <p className="text-sm text-gray-500">{data.date}</p>
+    <div className="min-h-screen bg-[#F4F2F7]">
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-purple-100 px-5 py-4">
+        <div className="flex items-center gap-2 mb-3">
+          <img src="/ippeo-logo.png" alt="IPPEO" className="w-6 h-6 rounded" />
+          <h1 className="text-sm font-bold text-gray-800 tracking-tight">
+            IPPEO | 의사용 상담 브리핑
+          </h1>
+          <span className="ml-auto text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+            Doctor
+          </span>
+        </div>
+        <div>
+          <h2 className="text-2xl font-black text-gray-800 leading-tight">{data.title}</h2>
+          <p className="text-xs text-gray-500 mt-2 font-medium">
+            {data.date?.startsWith("작성일") ? data.date : `작성일: ${data.date}`}
+          </p>
+        </div>
+      </header>
+
+      {/* Sections */}
+      <div className="px-4 py-6 space-y-8 max-w-[640px] mx-auto">
+
+        {/* Section 1: 환자 개요 */}
+        {s1 && (
+          <section>
+            <SectionTitle number={1} title="환자 개요" />
+            <Card className="border-l-4 border-purple-400">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-400 font-medium">환자명</p>
+                  <p className="font-bold text-gray-800 text-base">{s1.name}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-400 font-medium">상담일</p>
+                  <p className="font-medium text-gray-700">{s1.consultation_date}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-400 font-medium">분류</p>
+                  <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-700">
+                    {s1.classification === "성형외과" ? "🏥" : "💊"} {s1.classification}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-400 font-medium">내원 의지 (CTA)</p>
+                  <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full ${ctaColor(s1.cta_level)}`}>
+                    {ctaLabel(s1.cta_level)}
+                  </span>
+                </div>
+              </div>
+              {s1.summary && (
+                <div className="mt-4 pt-4 border-t border-purple-50">
+                  <p className="text-sm text-gray-700 leading-relaxed">{s1.summary}</p>
+                </div>
+              )}
+            </Card>
+          </section>
+        )}
+
+        {/* Section 2: 핵심 호소 */}
+        {s2 && (
+          <section>
+            <SectionTitle number={2} title="핵심 호소" />
+            <Card>
+              {s2.summary && (
+                <p className="text-sm text-gray-700 leading-relaxed mb-4">{s2.summary}</p>
+              )}
+              {s2.points?.length > 0 && (
+                <ul className="space-y-3">
+                  {s2.points.map((p, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="mt-1 w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-purple-500 text-[10px] font-bold">{i + 1}</span>
+                      </span>
+                      <span className="text-sm text-gray-700 leading-relaxed">{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          </section>
+        )}
+
+        {/* Section 3: 언급 시술 */}
+        {s3 && s3.procedures?.length > 0 && (
+          <section>
+            <SectionTitle number={3} title="언급 시술" />
+            <div className="space-y-3">
+              {s3.procedures.map((proc, i) => (
+                <Card key={i} className="border-l-4 border-purple-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-gray-800">{proc.name}</span>
+                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                      proc.patient_attitude === "적극적"
+                        ? "bg-green-100 text-green-700"
+                        : proc.patient_attitude === "관심"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-gray-100 text-gray-600"
+                    }`}>
+                      {proc.patient_attitude}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 leading-relaxed">{proc.context}</p>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Section 4: 의학적 맥락 */}
+        {s4 && (
+          <section>
+            <SectionTitle number={4} title="의학적 맥락" />
+            <Card>
+              <p className="text-sm text-gray-700 leading-relaxed mb-4">{s4.current_state}</p>
+              {s4.related_history && (
+                <div className="bg-purple-50 rounded-lg p-3 mb-4">
+                  <p className="text-xs font-medium text-purple-600 mb-1">관련 병력</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">{s4.related_history}</p>
+                </div>
+              )}
+              {s4.key_concerns?.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">주요 관심사항</p>
+                  {s4.key_concerns.map((c, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="mt-0.5 w-4 h-4 bg-amber-100 rounded flex items-center justify-center flex-shrink-0">
+                        <span className="text-amber-600 text-[10px]">!</span>
+                      </span>
+                      <span className="text-sm text-gray-700 leading-relaxed">{c}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </section>
+        )}
+
+        {/* Section 5: 환자 우려사항 */}
+        {s5 && s5.concerns?.length > 0 && (
+          <section>
+            <SectionTitle number={5} title="환자 우려사항" />
+            <Card>
+              <div className="space-y-3">
+                {s5.concerns.map((item, i) => (
+                  <div key={i} className="flex items-start gap-3 bg-gray-50 rounded-lg p-3">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 flex-shrink-0 ${
+                      item.priority === "high"
+                        ? "bg-red-100 text-red-700"
+                        : item.priority === "medium"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-gray-200 text-gray-600"
+                    }`}>
+                      {item.priority === "high" ? "높음" : item.priority === "medium" ? "보통" : "낮음"}
+                    </span>
+                    <span className="text-sm text-gray-700 leading-relaxed">{item.concern}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </section>
+        )}
+
+        {/* Section 6: 내원 의지 */}
+        {s6 && (
+          <section>
+            <SectionTitle number={6} title="내원 의지 분석" />
+            <Card className="border-l-4 border-purple-400">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-400 font-medium">CTA 레벨</p>
+                  <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full ${ctaColor(s6.cta_level)}`}>
+                    {ctaLabel(s6.cta_level)}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-400 font-medium">예상 방문</p>
+                  <p className="text-sm font-medium text-gray-800">{s6.expected_visit}</p>
+                </div>
+              </div>
+              {s6.evidence?.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">근거 발화</p>
+                  <div className="space-y-2">
+                    {s6.evidence.map((e, i) => (
+                      <div key={i} className="bg-purple-50 rounded-lg px-3 py-2 flex items-start gap-2">
+                        <span className="text-purple-400 text-sm mt-0.5">&ldquo;</span>
+                        <p className="text-sm text-gray-700 leading-relaxed italic">{e}</p>
+                        <span className="text-purple-400 text-sm mt-0.5">&rdquo;</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Card>
+          </section>
+        )}
+
+        {/* Section 7: 사전 참고사항 */}
+        {s7 && (
+          <section>
+            <SectionTitle number={7} title="사전 참고사항" />
+            <Card>
+              {s7.preliminary_opinion && (
+                <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 mb-4">
+                  <p className="text-xs font-bold text-purple-600 mb-1">사전 소견</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">{s7.preliminary_opinion}</p>
+                </div>
+              )}
+              {s7.recommended_tests?.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">추천 검사</p>
+                  <ul className="space-y-2">
+                    {s7.recommended_tests.map((t, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="mt-0.5 w-4 h-4 bg-green-100 rounded flex items-center justify-center flex-shrink-0">
+                          <span className="text-green-600 text-[10px]">+</span>
+                        </span>
+                        <span className="text-sm text-gray-700 leading-relaxed">{t}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {s7.cautions?.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">주의점</p>
+                  <ul className="space-y-2">
+                    {s7.cautions.map((c, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="mt-0.5 w-4 h-4 bg-amber-100 rounded flex items-center justify-center flex-shrink-0">
+                          <span className="text-amber-600 text-[10px]">!</span>
+                        </span>
+                        <span className="text-sm text-gray-700 leading-relaxed">{c}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </Card>
+          </section>
+        )}
       </div>
 
-      {/* Section 1: 환자 개요 */}
-      {s1 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-bold text-purple-700 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center text-xs">1</span>
-            환자 개요
-          </h3>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><span className="text-gray-500">이름:</span> <span className="font-medium">{s1.name}</span></div>
-            <div><span className="text-gray-500">분류:</span> <span className="font-medium">{s1.classification}</span></div>
-            <div><span className="text-gray-500">CTA:</span> <span className={`font-medium ${s1.cta_level === 'HOT' || s1.cta_level === 'hot' ? 'text-red-600' : s1.cta_level === 'WARM' || s1.cta_level === 'warm' ? 'text-yellow-600' : 'text-blue-600'}`}>{s1.cta_level?.toUpperCase()}</span></div>
-            <div><span className="text-gray-500">상담일:</span> <span className="font-medium">{s1.consultation_date}</span></div>
-          </div>
-          {s1.summary && <p className="text-sm text-gray-700 mt-3 pt-3 border-t border-gray-100">{s1.summary}</p>}
+      {/* Footer */}
+      <footer className="bg-white border-t border-purple-100 p-8 text-center">
+        <div className="flex justify-center items-center gap-2 mb-4">
+          <img src="/ippeo-logo.png" alt="IPPEO" className="w-6 h-6 rounded" />
+          <span className="text-sm font-bold text-gray-800">IPPEO | 의사용 상담 브리핑</span>
         </div>
-      )}
-
-      {/* Section 2: 핵심 호소 */}
-      {s2 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-bold text-purple-700 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center text-xs">2</span>
-            핵심 호소
-          </h3>
-          {s2.summary && <p className="text-sm text-gray-700 mb-3">{s2.summary}</p>}
-          <ul className="space-y-1.5">
-            {s2.points?.map((p, i) => (
-              <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                <span className="text-purple-400 mt-0.5">•</span>
-                <span>{p}</span>
-              </li>
-            ))}
-          </ul>
+        <div className="space-y-2">
+          <p className="text-[10px] text-gray-400 leading-relaxed">
+            본 리포트는 상담 내용을 AI가 분석하여 작성한 사전 브리핑 자료이며, 확정적인 진단이나 치료를 보증하는 것이 아닙니다.
+          </p>
+          <p className="text-[10px] text-gray-400">
+            &copy; 2026 IPPEO Beauty Consultation.
+          </p>
         </div>
-      )}
-
-      {/* Section 3: 언급 시술 */}
-      {s3 && s3.procedures?.length > 0 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-bold text-purple-700 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center text-xs">3</span>
-            언급 시술
-          </h3>
-          <div className="space-y-3">
-            {s3.procedures.map((proc, i) => (
-              <div key={i} className="bg-gray-50 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-gray-800">{proc.name}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    proc.patient_attitude === '적극적' ? 'bg-green-100 text-green-700' :
-                    proc.patient_attitude === '관심' ? 'bg-blue-100 text-blue-700' :
-                    'bg-gray-100 text-gray-600'
-                  }`}>{proc.patient_attitude}</span>
-                </div>
-                <p className="text-xs text-gray-600">{proc.context}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Section 4: 의학적 맥락 */}
-      {s4 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-bold text-purple-700 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center text-xs">4</span>
-            의학적 맥락
-          </h3>
-          <p className="text-sm text-gray-700 mb-2">{s4.current_state}</p>
-          {s4.related_history && (
-            <p className="text-sm text-gray-600 mb-2">
-              <span className="text-gray-500">관련 병력:</span> {s4.related_history}
-            </p>
-          )}
-          {s4.key_concerns?.length > 0 && (
-            <ul className="space-y-1.5 mt-2">
-              {s4.key_concerns.map((c, i) => (
-                <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                  <span className="text-orange-400 mt-0.5">!</span>
-                  <span>{c}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {/* Section 5: 환자 우려사항 */}
-      {s5 && s5.concerns?.length > 0 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-bold text-purple-700 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center text-xs">5</span>
-            환자 우려사항
-          </h3>
-          <div className="space-y-2">
-            {s5.concerns.map((item, i) => (
-              <div key={i} className="flex items-start gap-2 text-sm">
-                <span className={`text-xs px-1.5 py-0.5 rounded mt-0.5 ${
-                  item.priority === 'high' ? 'bg-red-100 text-red-700' :
-                  item.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-gray-100 text-gray-600'
-                }`}>{item.priority === 'high' ? '높음' : item.priority === 'medium' ? '보통' : '낮음'}</span>
-                <span className="text-gray-700">{item.concern}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Section 6: 내원 의지 */}
-      {s6 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-bold text-purple-700 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center text-xs">6</span>
-            내원 의지
-          </h3>
-          <div className="text-sm space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500">CTA:</span>
-              <span className={`font-medium ${
-                s6.cta_level === 'HOT' || s6.cta_level === 'hot' ? 'text-red-600' :
-                s6.cta_level === 'WARM' || s6.cta_level === 'warm' ? 'text-yellow-600' : 'text-blue-600'
-              }`}>{s6.cta_level?.toUpperCase()}</span>
-            </div>
-            <div><span className="text-gray-500">예상 방문:</span> <span className="font-medium">{s6.expected_visit}</span></div>
-            {s6.evidence?.length > 0 && (
-              <div className="mt-2 space-y-1">
-                <span className="text-xs text-gray-500">근거 발화:</span>
-                {s6.evidence.map((e, i) => (
-                  <p key={i} className="text-xs text-gray-600 bg-gray-50 rounded px-2 py-1">&ldquo;{e}&rdquo;</p>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Section 7: 사전 참고사항 */}
-      {s7 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-bold text-purple-700 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center text-xs">7</span>
-            사전 참고사항
-          </h3>
-          {s7.preliminary_opinion && (
-            <p className="text-sm text-gray-700 mb-3">{s7.preliminary_opinion}</p>
-          )}
-          {s7.recommended_tests?.length > 0 && (
-            <div className="mb-2">
-              <span className="text-xs font-medium text-gray-500">추천 검사:</span>
-              <ul className="mt-1 space-y-1">
-                {s7.recommended_tests.map((t, i) => (
-                  <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                    <span className="text-green-400 mt-0.5">+</span><span>{t}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {s7.cautions?.length > 0 && (
-            <div>
-              <span className="text-xs font-medium text-gray-500">주의점:</span>
-              <ul className="mt-1 space-y-1">
-                {s7.cautions.map((c, i) => (
-                  <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                    <span className="text-orange-400 mt-0.5">!</span><span>{c}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
+      </footer>
     </div>
   );
 }

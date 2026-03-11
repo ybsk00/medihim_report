@@ -92,9 +92,9 @@ async def notify_report_ready(consultation_id: str):
 
 async def _send_callback(url: str, payload: dict, api_key: str, secret: str):
     """콜백 전송 (HMAC 서명 + 최대 3회 재시도)"""
-    body = json.dumps(payload, ensure_ascii=False)
+    body = json.dumps(payload, ensure_ascii=True)
 
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json; charset=utf-8"}
     if api_key:
         headers["X-API-Key"] = api_key
     if secret:

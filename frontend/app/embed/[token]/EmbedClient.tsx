@@ -162,13 +162,11 @@ export default function EmbedClient({
     );
   }
 
-  // R1 의사용 리포트 렌더링
+  // R1 의사용 리포트 렌더링 (자체 헤더/푸터 포함)
   if (reportType === "r1") {
     return (
-      <div ref={containerRef} className="font-[Pretendard,Noto_Sans_KR,sans-serif] bg-[#FAFAFA] min-h-screen">
-        <div className="max-w-[640px] mx-auto px-4 py-6">
-          <R1DoctorReport data={report as R1ReportData} />
-        </div>
+      <div ref={containerRef} className="font-[Pretendard,Noto_Sans_KR,sans-serif]">
+        <R1DoctorReport data={report as R1ReportData} />
       </div>
     );
   }
