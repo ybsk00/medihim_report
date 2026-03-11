@@ -134,3 +134,6 @@ class IppeoConsultationRequest(BaseModel):
     hospital_name: Optional[str] = ""
     doctor_name: Optional[str] = ""
     concern_area: Optional[str] = ""
+    # 이뽀 측 ID (콜백 시 그대로 돌려줌)
+    ippeo_user_id: Optional[str] = ""
+    ippeo_consultation_id: Optional[str] = ""

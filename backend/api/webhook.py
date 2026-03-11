@@ -82,6 +82,8 @@ async def receive_consultation(
         "doctor_name": data.doctor_name or "",
         "concern_area": data.concern_area or "",
         "consultation_round": data.consultation_round,
+        "customer_id": data.ippeo_user_id or "",
+        "ippeo_consultation_id": data.ippeo_consultation_id or "",
         "status": "processing",
     }
     result = db.table("consultations").insert(record).execute()
