@@ -293,21 +293,6 @@ export default function R1DoctorReport({ data }: Props) {
         )}
       </div>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-purple-100 px-5 py-8 text-center">
-        <div className="flex justify-center items-center gap-2 mb-4">
-          <img src="/ippeo-logo.png" alt="IPPEO" className="w-5 h-5 rounded" />
-          <span className="text-xs font-bold text-gray-500">IPPEO | 의사용 상담 브리핑</span>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[10px] text-gray-400 leading-relaxed">
-            본 리포트는 상담 내용을 AI가 분석하여 작성한 사전 브리핑 자료이며, 확정적인 진단이나 치료를 보증하는 것이 아닙니다.
-          </p>
-          <p className="text-[10px] text-gray-400">
-            &copy; 2026 IPPEO Beauty Consultation.
-          </p>
-        </div>
-      </footer>
       </div>
     </div>
   );

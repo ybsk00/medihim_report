@@ -278,8 +278,6 @@ export default function EmbedClient({
         </div>
       </div>
 
-      {/* Footer */}
-      <ReportFooter />
       </div>
     </div>
   );
