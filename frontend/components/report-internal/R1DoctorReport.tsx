@@ -49,27 +49,28 @@ export default function R1DoctorReport({ data }: Props) {
 
   return (
     <div className="min-h-screen bg-[#F4F2F7]">
+      <div className="max-w-[480px] mx-auto bg-[#F4F2F7] min-h-screen shadow-[0_0_20px_rgba(0,0,0,0.05)]">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-purple-100 px-5 py-4">
-        <div className="flex items-center gap-2 mb-3">
-          <img src="/ippeo-logo.png" alt="IPPEO" className="w-6 h-6 rounded" />
-          <h1 className="text-sm font-bold text-gray-800 tracking-tight">
+      <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-purple-100 px-5 py-5">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <img src="/ippeo-logo.png" alt="IPPEO" className="w-5 h-5 rounded" />
+          <h1 className="text-xs font-bold text-gray-500 tracking-tight">
             IPPEO | 의사용 상담 브리핑
           </h1>
-          <span className="ml-auto text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
             Doctor
           </span>
         </div>
-        <div>
-          <h2 className="text-2xl font-black text-gray-800 leading-tight">{data.title}</h2>
-          <p className="text-xs text-gray-500 mt-2 font-medium">
+        <div className="text-center">
+          <h2 className="text-xl font-black text-gray-800 leading-tight">{data.title}</h2>
+          <p className="text-[11px] text-gray-400 mt-2 font-medium">
             {data.date?.startsWith("작성일") ? data.date : `작성일: ${data.date}`}
           </p>
         </div>
       </header>
 
       {/* Sections */}
-      <div className="px-4 py-6 space-y-8 max-w-[480px] mx-auto">
+      <div className="px-4 py-6 space-y-8">
 
         {/* Section 1: 환자 개요 */}
         {s1 && (
@@ -293,10 +294,10 @@ export default function R1DoctorReport({ data }: Props) {
       </div>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-purple-100 p-8 text-center">
+      <footer className="bg-white border-t border-purple-100 px-5 py-8 text-center">
         <div className="flex justify-center items-center gap-2 mb-4">
-          <img src="/ippeo-logo.png" alt="IPPEO" className="w-6 h-6 rounded" />
-          <span className="text-sm font-bold text-gray-800">IPPEO | 의사용 상담 브리핑</span>
+          <img src="/ippeo-logo.png" alt="IPPEO" className="w-5 h-5 rounded" />
+          <span className="text-xs font-bold text-gray-500">IPPEO | 의사용 상담 브리핑</span>
         </div>
         <div className="space-y-2">
           <p className="text-[10px] text-gray-400 leading-relaxed">
@@ -307,6 +308,7 @@ export default function R1DoctorReport({ data }: Props) {
           </p>
         </div>
       </footer>
+      </div>
     </div>
   );
 }
