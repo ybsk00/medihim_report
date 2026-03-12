@@ -145,15 +145,15 @@ async def get_report_status(
                 result["patient_report"] = {
                     "report_token": token,
                     "embed_url": {
-                        "ja": f"{embed_base}/{token}?lang=ja",
-                        "ko": f"{embed_base}/{token}?lang=ko",
+                        "ja": f"{embed_base}/patient/ja/{token}",
+                        "ko": f"{embed_base}/patient/ko/{token}",
                     }
                 }
             elif r["report_type"] == "r1":
                 result["doctor_report"] = {
                     "report_token": token,
                     "embed_url": {
-                        "ko": f"{embed_base}/{token}?lang=ko",
+                        "ko": f"{embed_base}/doctor/ko/{token}",
                     }
                 }
 
