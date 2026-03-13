@@ -88,6 +88,71 @@ def _build_fallback_r4(customer_name: str, classification: str) -> dict:
     }
 
 
+def _build_fallback_r4_ko(customer_name: str, classification: str) -> dict:
+    """R4 환자용 폴백 리포트 (한국어 번역본, 10섹션 구조 유지)"""
+    category_ko = "피부과" if classification == "dermatology" else "미용성형"
+    today = datetime.now(timezone(timedelta(hours=9))).strftime("%Y년 %m월 %d일")
+
+    return {
+        "title": f"{customer_name}님 상담 리포트",
+        "date": today,
+        "section1_key_summary": {
+            "points": [
+                "이번 상담 내용만으로는 상세한 리포트를 작성하기 위한 정보가 부족하였습니다.",
+                "불편을 드려 죄송합니다.",
+            ]
+        },
+        "section2_cause_analysis": {
+            "intro": "상담 내용의 정보량이 제한적이어서 원인·배경의 상세한 분석이 어려운 상황입니다.",
+            "causes": [
+                "상담 시간이 짧았거나, 구체적인 증상·희망 사항의 공유가 적었을 가능성이 있습니다.",
+            ],
+            "conclusion": "다음 상담에서는 신경 쓰이는 부위나 희망 사항을 구체적으로 전달해 주시면 보다 정확한 분석이 가능합니다.",
+        },
+        "section3_recommendation": {
+            "primary": {
+                "label": "다음 상담 시 권장사항",
+                "items": [
+                    "신경 쓰이는 부위의 사진을 준비해 주세요.",
+                    f"{category_ko}에 관한 구체적인 고민을 사전에 메모해 두시면 원활합니다.",
+                    "과거 시술 이력이나 복용 중인 약물이 있으시면 알려주세요.",
+                ],
+            },
+            "secondary": {"label": "", "items": []},
+            "goal": "추가 상담을 해주시면 상세한 리포트를 제공해 드리겠습니다.",
+        },
+        "section4_recovery": {
+            "timeline": [],
+            "note": "구체적인 시술 계획이 정해진 단계에서 회복 스케줄을 안내해 드리겠습니다.",
+        },
+        "section5_scar_info": {
+            "points": ["시술 내용이 확정되면 흉터에 관한 자세한 안내를 드리겠습니다."],
+        },
+        "section6_precautions": {
+            "points": ["다음 상담까지 특별한 주의사항은 없습니다."],
+        },
+        "section7_risks": {
+            "points": ["시술 계획이 구체화된 단계에서 리스크에 대해 자세히 설명드리겠습니다."],
+        },
+        "section8_cost_estimate": {
+            "items": ["상담 내용이 부족하여 비용 안내를 드리기 어렵습니다."],
+            "note": "다음 상담 시 구체적인 비용 범위를 안내해 드리겠습니다.",
+        },
+        "section9_visit_date": {
+            "date": None,
+            "note": "추가 상담 후 내원 스케줄을 제안해 드리겠습니다.",
+        },
+        "section10_ippeo_message": {
+            "paragraphs": [
+                f"{customer_name}님, 이번에는 충분한 정보를 전달드리지 못해 죄송합니다.",
+                "추가 상담을 해주시면 보다 자세한 분석 결과와 제안을 리포트로 전달드리겠습니다.",
+                "편하게 다시 한번 상담해 주세요. IPPEO가 확실히 서포트하겠습니다.",
+            ],
+            "final_summary": "다음 상담에서 보다 충실한 리포트를 전달드리겠습니다. 기다리고 있겠습니다.",
+        },
+    }
+
+
 def _build_fallback_r1(customer_name: str, classification: str) -> dict:
     """R1 의사용 폴백 리포트 (한국어, 7섹션 구조 유지)"""
     category_ko = "피부과" if classification == "dermatology" else "성형외과"
@@ -313,9 +378,24 @@ async def run_pipeline(consultation_id: str):
             "classification_reason": reason,
         })
 
-        # 미분류면 파이프라인 중단
+        # 미분류면 폴백 리포트 생성 후 콜백 전송
         if final_classification == "unclassified":
-            await _update_consultation(consultation_id, {"status": "classification_pending"})
+            logger.info(f"[Pipeline:{consultation_id[:8]}] Unclassified → generating fallback reports")
+            fallback_r4 = _build_fallback_r4(customer_name, "plastic_surgery")
+            fallback_r4_ko = _build_fallback_r4_ko(customer_name, "plastic_surgery")
+            await _save_report(consultation_id, "r4", fallback_r4, [], 0, 3, report_data_ko=fallback_r4_ko)
+            fallback_r1 = _build_fallback_r1(customer_name, "plastic_surgery")
+            await _save_report(consultation_id, "r1", fallback_r1, [], 0, 3)
+            logger.info(f"[Pipeline:{consultation_id[:8]}] Unclassified fallback R1+R4 saved")
+            await _update_consultation(consultation_id, {
+                "status": "report_ready",
+                "error_message": "[폴백] 상담 내용이 부족하여 분류 불가 — 폴백 리포트 생성",
+            })
+            try:
+                await notify_report_ready(consultation_id)
+                logger.info(f"[Pipeline:{consultation_id[:8]}] Unclassified callback sent")
+            except Exception as cb_err:
+                logger.warning(f"[Pipeline:{consultation_id[:8]}] Unclassified callback failed: {cb_err}")
             return
 
         # ========================================
@@ -338,7 +418,8 @@ async def run_pipeline(consultation_id: str):
         fallback_classification = consultation.get("classification") or "plastic_surgery"
         try:
             fallback_r4 = _build_fallback_r4(customer_name, fallback_classification)
-            await _save_report(consultation_id, "r4", fallback_r4, [], 0, 3)
+            fallback_r4_ko = _build_fallback_r4_ko(customer_name, fallback_classification)
+            await _save_report(consultation_id, "r4", fallback_r4, [], 0, 3, report_data_ko=fallback_r4_ko)
             fallback_r1 = _build_fallback_r1(customer_name, fallback_classification)
             await _save_report(consultation_id, "r1", fallback_r1, [], 0, 3)
             logger.info(f"[Pipeline:{consultation_id[:8]}] Fallback R1+R4 saved")
@@ -407,6 +488,7 @@ async def _save_report(
     rag_results: list[dict],
     review_count: int,
     max_retries: int,
+    report_data_ko: dict | None = None,
 ):
     """리포트 저장 (upsert: consultation_id + report_type 기준)"""
     db = get_supabase()
@@ -426,7 +508,7 @@ async def _save_report(
 
     record = {
         "report_data": report_data,
-        "report_data_ko": None,
+        "report_data_ko": report_data_ko,
         "rag_context": rag_results,
         "review_count": review_count,
         "review_passed": review_count <= max_retries,
@@ -544,7 +626,7 @@ async def _generate_all_reports(
     except Exception as e:
         logger.error(f"[Pipeline:{consultation_id[:8]}] R1 failed, saving fallback: {str(e)}", exc_info=True)
         await _log_agent(consultation_id, "r1_writer", None, None, 0, "failed", str(e))
-        # 폴백 R1 리포트 저장
+        # 폴백 R1 리포트 저장 (R1은 한국어 전용이므로 report_data_ko 불필요)
         fallback_r1 = _build_fallback_r1(customer_name, classification)
         await _save_report(consultation_id, "r1", fallback_r1, rag_results, 0, 3)
         logger.info(f"[Pipeline:{consultation_id[:8]}] R1 fallback saved")
@@ -658,9 +740,10 @@ async def _generate_all_reports(
     except Exception as e:
         logger.error(f"[Pipeline:{consultation_id[:8]}] R4 failed, saving fallback: {str(e)}", exc_info=True)
         await _log_agent(consultation_id, "r4_writer", None, None, 0, "failed", str(e))
-        # 폴백 R4 리포트 저장
+        # 폴백 R4 리포트 저장 (한국어 번역본 포함)
         fallback_r4 = _build_fallback_r4(customer_name, classification)
-        await _save_report(consultation_id, "r4", fallback_r4, rag_results, 0, 3)
+        fallback_r4_ko = _build_fallback_r4_ko(customer_name, classification)
+        await _save_report(consultation_id, "r4", fallback_r4, rag_results, 0, 3, report_data_ko=fallback_r4_ko)
         logger.info(f"[Pipeline:{consultation_id[:8]}] R4 fallback saved")
 
     # ========================================

@@ -21,13 +21,6 @@ async def get_public_report(token: str):
     if not report.data:
         raise HTTPException(status_code=404, detail="Report not found")
 
-    # 유효기간 확인
-    expires_at = report.data.get("access_expires_at")
-    if expires_at:
-        expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-        if datetime.now(timezone.utc) > expiry:
-            raise HTTPException(status_code=410, detail="Report link has expired")
-
     # 발송된 리포트만 열람 가능
     if report.data["status"] not in ("sent", "approved"):
         raise HTTPException(status_code=403, detail="Report is not available yet")
@@ -53,12 +46,6 @@ async def verify_report_access(token: str, data: BirthDateVerify):
 
     if not report.data:
         raise HTTPException(status_code=404, detail="Report not found")
-
-    expires_at = report.data.get("access_expires_at")
-    if expires_at:
-        expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-        if datetime.now(timezone.utc) > expiry:
-            raise HTTPException(status_code=410, detail="Report link has expired")
 
     return {"verified": True, "report_id": report.data["id"]}
 
@@ -94,13 +81,6 @@ async def get_embed_report(token: str, lang: str = "ja"):
 
     if not report.data:
         raise HTTPException(status_code=404, detail="Report not found")
-
-    # 유효기간 확인
-    expires_at = report.data.get("access_expires_at")
-    if expires_at:
-        expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-        if datetime.now(timezone.utc) > expiry:
-            raise HTTPException(status_code=410, detail="Report link has expired")
 
     # draft 이상이면 열람 가능 (iframe 임베딩은 승인 전에도 미리보기 허용)
     if report.data["status"] not in ("draft", "approved", "sent"):
