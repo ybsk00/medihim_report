@@ -25,7 +25,7 @@ from services.supabase_client import get_supabase
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/health", tags=["health"])
 
-HEALTH_REPORT_TO = "ug_shin@medihim.com"
+HEALTH_REPORT_TO = ["ug_shin@medihim.com", "lumibreeze00@gmail.com"]
 KST = timezone(timedelta(hours=9))
 
 
@@ -288,13 +288,13 @@ async def _send_health_email(html: str, now_kst: datetime):
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"[IPPEO] Weekly System Health Report — {date_str}"
     msg["From"] = f"IPPEO System <{GMAIL_ADDRESS}>"
-    msg["To"] = HEALTH_REPORT_TO
+    msg["To"] = ", ".join(HEALTH_REPORT_TO)
     msg.attach(MIMEText(html, "html", "utf-8"))
 
     def _send():
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
-            server.send_message(msg)
+            server.sendmail(GMAIL_ADDRESS, HEALTH_REPORT_TO, msg.as_string())
 
     await asyncio.to_thread(_send)
     logger.info(f"[Health] Weekly report email sent to {HEALTH_REPORT_TO}")
