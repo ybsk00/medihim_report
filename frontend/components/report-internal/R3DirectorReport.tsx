@@ -1,9 +1,9 @@
 "use client";
 
-import { R1ReportData } from "@/lib/api";
+import { R3ReportData } from "@/lib/api";
 
 interface Props {
-  data: R1ReportData;
+  data: R3ReportData;
 }
 
 function SectionTitle({ number, title }: { number: number; title: string }) {
@@ -24,7 +24,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
   );
 }
 
-export default function R1DoctorReport({ data }: Props) {
+export default function R3DirectorReport({ data }: Props) {
   const s1 = data.section1_patient_overview;
   const s2 = data.section2_chief_complaints;
   const s3 = data.section3_mentioned_procedures;
@@ -55,10 +55,10 @@ export default function R1DoctorReport({ data }: Props) {
         <div className="flex items-center justify-center gap-2 mb-4">
           <img src="/ippeo-logo.png" alt="IPPEO" className="w-5 h-5 rounded" />
           <h1 className="text-xs font-bold text-gray-500 tracking-tight">
-            IPPEO | 의사용 상담 브리핑
+            IPPEO | 3차 상담리포트
           </h1>
           <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-            Doctor
+            상담실장
           </span>
         </div>
         <div className="text-center">
@@ -118,7 +118,7 @@ export default function R1DoctorReport({ data }: Props) {
               )}
               {s2.points?.length > 0 && (
                 <ul className="space-y-3">
-                  {s2.points.map((p, i) => (
+                  {s2.points.map((p: string, i: number) => (
                     <li key={i} className="flex items-start gap-3">
                       <span className="mt-1 w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
                         <span className="text-purple-500 text-[10px] font-bold">{i + 1}</span>
@@ -137,7 +137,7 @@ export default function R1DoctorReport({ data }: Props) {
           <section>
             <SectionTitle number={3} title="언급 시술" />
             <div className="space-y-3">
-              {s3.procedures.map((proc, i) => (
+              {s3.procedures.map((proc: { name: string; patient_attitude: string; context: string }, i: number) => (
                 <Card key={i} className="border-l-4 border-purple-200">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-bold text-gray-800">{proc.name}</span>
@@ -173,7 +173,7 @@ export default function R1DoctorReport({ data }: Props) {
               {s4.key_concerns?.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">주요 관심사항</p>
-                  {s4.key_concerns.map((c, i) => (
+                  {s4.key_concerns.map((c: string, i: number) => (
                     <div key={i} className="flex items-start gap-2">
                       <span className="mt-0.5 w-4 h-4 bg-amber-100 rounded flex items-center justify-center flex-shrink-0">
                         <span className="text-amber-600 text-[10px]">!</span>
@@ -193,7 +193,7 @@ export default function R1DoctorReport({ data }: Props) {
             <SectionTitle number={5} title="환자 우려사항" />
             <Card>
               <div className="space-y-3">
-                {s5.concerns.map((item, i) => (
+                {s5.concerns.map((item: { priority: string; concern: string }, i: number) => (
                   <div key={i} className="flex items-start gap-3 bg-gray-50 rounded-lg p-3">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 flex-shrink-0 ${
                       item.priority === "high"
@@ -233,7 +233,7 @@ export default function R1DoctorReport({ data }: Props) {
                 <div>
                   <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">근거 발화</p>
                   <div className="space-y-2">
-                    {s6.evidence.map((e, i) => (
+                    {s6.evidence.map((e: string, i: number) => (
                       <div key={i} className="bg-purple-50 rounded-lg px-3 py-2 flex items-start gap-2">
                         <span className="text-purple-400 text-sm mt-0.5">&ldquo;</span>
                         <p className="text-sm text-gray-700 leading-relaxed italic">{e}</p>
@@ -262,7 +262,7 @@ export default function R1DoctorReport({ data }: Props) {
                 <div className="mb-4">
                   <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">추천 검사</p>
                   <ul className="space-y-2">
-                    {s7.recommended_tests.map((t, i) => (
+                    {s7.recommended_tests.map((t: string, i: number) => (
                       <li key={i} className="flex items-start gap-2">
                         <span className="mt-0.5 w-4 h-4 bg-green-100 rounded flex items-center justify-center flex-shrink-0">
                           <span className="text-green-600 text-[10px]">+</span>
@@ -277,7 +277,7 @@ export default function R1DoctorReport({ data }: Props) {
                 <div>
                   <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">주의점</p>
                   <ul className="space-y-2">
-                    {s7.cautions.map((c, i) => (
+                    {s7.cautions.map((c: string, i: number) => (
                       <li key={i} className="flex items-start gap-2">
                         <span className="mt-0.5 w-4 h-4 bg-amber-100 rounded flex items-center justify-center flex-shrink-0">
                           <span className="text-amber-600 text-[10px]">!</span>

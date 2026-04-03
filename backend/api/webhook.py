@@ -23,7 +23,7 @@ async def _download_stt_text(url: str) -> str:
 
 
 async def _process_consultation_with_id(consultation_id: str, data: dict):
-    """백그라운드: STT 확보 → 파이프라인 실행 (R1 + R4 자동 생성)"""
+    """백그라운드: STT 확보 → 파이프라인 실행 (R3 + R4 자동 생성)"""
     db = get_supabase()
 
     try:
@@ -43,7 +43,7 @@ async def _process_consultation_with_id(consultation_id: str, data: dict):
 
         logger.info(f"[Webhook] STT ready: {len(stt_text)} chars, consultation: {consultation_id}")
 
-        # 2. 파이프라인 자동 실행 (R1 + R4)
+        # 2. 파이프라인 자동 실행 (R3 + R4)
         from agents.pipeline import run_pipeline
         await run_pipeline(consultation_id)
 
@@ -64,7 +64,7 @@ async def receive_consultation(
 ):
     """
     이뽀 앱에서 상담 STT 데이터 수신.
-    즉시 consultation_id를 반환하고, 백그라운드에서 R1(의사용) + R4(환자용) 리포트 자동 생성.
+    즉시 consultation_id를 반환하고, 백그라운드에서 R3(상담실장용) + R4(환자용) 리포트 자동 생성.
     """
     logger.info(
         f"[Webhook] Received: customer={data.customer_name}, round={data.consultation_round}"
@@ -149,7 +149,7 @@ async def get_report_status(
                         "ko": f"{embed_base}/patient/ko/{token}",
                     }
                 }
-            elif r["report_type"] == "r1":
+            elif r["report_type"] == "r3":
                 result["doctor_report"] = {
                     "report_token": token,
                     "embed_url": {

@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { use } from "react";
-import { reportAPI, isV3Report, type Report, type ReportData, type R1ReportData } from "@/lib/api";
-import R1DoctorReport from "@/components/report-internal/R1DoctorReport";
-// [R1-R3 비활성화] R2/R3는 28일 R4 테스트 후 활성화 예정
+import { reportAPI, isV3Report, type Report, type ReportData, type R3ReportData } from "@/lib/api";
+import R3DirectorReport from "@/components/report-internal/R3DirectorReport";
+// [R1-R2 비활성화] 추후 활성화 예정
+// import R1CSReport from "@/components/report-internal/R1CSReport";
 // import R2DirectorReport from "@/components/report-internal/R2DirectorReport";
-// import R3ExecutiveReport from "@/components/report-internal/R3ExecutiveReport";
 
 export default function ReportDetailPage({
   params,
@@ -153,7 +153,7 @@ export default function ReportDetailPage({
   const consultation = report.consultations;
   const customerName = consultation?.customer_name || "고객";
   const customerEmail = consultation?.customer_email || "";
-  const isR1 = report.report_type === "r1";
+  const isR3 = report.report_type === "r3";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reportData: any = lang === "ko" && report.report_data_ko
@@ -174,9 +174,9 @@ export default function ReportDetailPage({
         <h2 className="text-xl font-bold text-slate-800">
           {customerName} 리포트 검토
           <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            isR1 ? "bg-purple-100 text-purple-800" : "bg-coral/10 text-coral"
+            isR3 ? "bg-purple-100 text-purple-800" : "bg-coral/10 text-coral"
           }`}>
-            {isR1 ? "👨‍⚕️ 의사용" : "👤 환자용"}
+            {isR3 ? "상담실장" : "👤 환자용"}
           </span>
         </h2>
       </header>
@@ -184,8 +184,8 @@ export default function ReportDetailPage({
       <div className="p-8 max-w-[1200px] mx-auto w-full space-y-6">
         {reportData && (
           <>
-            {/* Language Toggle — R1은 한국어 전용이므로 숨김 */}
-            {!isR1 && (
+            {/* Language Toggle — R3은 한국어 전용이므로 숨김 */}
+            {!isR3 && (
               <div className="flex items-center justify-between">
                 <div className="flex bg-slate-100 rounded-lg p-0.5">
                   <button
@@ -218,11 +218,11 @@ export default function ReportDetailPage({
             )}
 
             {/* Report Preview */}
-            {isR1 ? (
-              /* R1 의사용 리포트 (한국어, 보라색 테마) */
+            {isR3 ? (
+              /* R3 상담실장 리포트 (한국어, 보라색 테마) */
               <div className="bg-white rounded-xl border border-purple-200 shadow-sm p-8">
                 <div className="mx-auto" style={{ maxWidth: "640px" }}>
-                  <R1DoctorReport data={reportData as R1ReportData} />
+                  <R3DirectorReport data={reportData as R3ReportData} />
                 </div>
               </div>
             ) : (
@@ -235,7 +235,7 @@ export default function ReportDetailPage({
                       <div className="flex items-center gap-2 mb-3">
                         <img src="/ippeo-logo.png" alt="IPPEO" className="w-6 h-6 rounded" />
                         <h1 className="text-sm font-bold text-text-dark tracking-tight font-[Noto_Sans_JP]">
-                          IPPEO | オンライン相談リポート
+                          {lang === "ko" ? "IPPEO | 온라인 상담 리포트" : "IPPEO | オンライン相談リポート"}
                         </h1>
                       </div>
                       <h2 className="text-xl font-black text-text-dark leading-tight font-[Noto_Sans_JP]">
@@ -260,10 +260,12 @@ export default function ReportDetailPage({
                     <div className="bg-white border-t border-gray-100 p-6 text-center font-[Noto_Sans_JP]">
                       <div className="flex justify-center items-center gap-2 mb-4">
                         <img src="/ippeo-logo.png" alt="IPPEO" className="w-6 h-6 rounded" />
-                        <span className="text-sm font-bold text-text-dark">IPPEO | オンライン相談リポート</span>
+                        <span className="text-sm font-bold text-text-dark">{lang === "ko" ? "IPPEO | 온라인 상담 리포트" : "IPPEO | オンライン相談リポート"}</span>
                       </div>
                       <p className="text-[10px] text-gray-400 leading-relaxed">
-                        本リポートはカウンセリング時の内容を元に作成されたものであり、確定的な診断や治療を保証するものではありません。
+                        {lang === "ko"
+                          ? "본 리포트는 상담 내용을 바탕으로 작성된 것이며, 확정적인 진단이나 치료를 보장하는 것은 아닙니다."
+                          : "本リポートはカウンセリング時の内容を元に作成されたものであり、確定的な診断や治療を保証するものではありません。"}
                       </p>
                     </div>
                   </div>

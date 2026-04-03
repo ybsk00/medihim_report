@@ -1,5 +1,6 @@
 """이뽀 앱에 리포트 완료 알림 전송 (report_ready webhook callback)"""
 
+import asyncio
 import hmac
 import hashlib
 import json
@@ -11,13 +12,19 @@ logger = logging.getLogger(__name__)
 
 
 async def notify_report_ready(consultation_id: str):
-    """리포트 생성 완료 시 이뽀 앱에 콜백 전송 (1건 통합)"""
-    from config import IPPEO_WEBHOOK_URL, IPPEO_WEBHOOK_SECRET, IPPEO_API_KEY, FRONTEND_URL
+    """리포트 생성 완료 시 이뽀 앱에 콜백 전송 (운영 + 개발 동시)"""
+    from config import IPPEO_WEBHOOK_URL, IPPEO_WEBHOOK_URL_DEV, IPPEO_WEBHOOK_SECRET, IPPEO_API_KEY, FRONTEND_URL
     from services.supabase_client import get_supabase
 
-    callback_url = IPPEO_WEBHOOK_URL
-    if not callback_url:
-        logger.warning("[Callback] IPPEO_WEBHOOK_URL not configured, skipping callback")
+    # 전송할 URL 목록 구성
+    callback_urls = []
+    if IPPEO_WEBHOOK_URL:
+        callback_urls.append(("PROD", IPPEO_WEBHOOK_URL))
+    if IPPEO_WEBHOOK_URL_DEV:
+        callback_urls.append(("DEV", IPPEO_WEBHOOK_URL_DEV))
+
+    if not callback_urls:
+        logger.warning("[Callback] No IPPEO_WEBHOOK_URL configured, skipping callback")
         return
 
     db = get_supabase()
@@ -48,7 +55,7 @@ async def notify_report_ready(consultation_id: str):
             "customer_name": c["customer_name"],
             "error_message": c.get("error_message") or "리포트 생성 실패",
         }
-        await _send_callback(callback_url, payload, IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET)
+        await _send_to_all(callback_urls, payload, IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET)
         return
 
     # 리포트 조회
@@ -79,7 +86,7 @@ async def notify_report_ready(consultation_id: str):
                     "ko": f"{embed_base}/patient/ko/{token}",
                 },
             }
-        elif r["report_type"] == "r1":
+        elif r["report_type"] == "r3":
             payload["doctor_report"] = {
                 "report_token": token,
                 "embed_url": {
@@ -87,10 +94,16 @@ async def notify_report_ready(consultation_id: str):
                 },
             }
 
-    await _send_callback(callback_url, payload, IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET)
+    await _send_to_all(callback_urls, payload, IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET)
 
 
-async def _send_callback(url: str, payload: dict, api_key: str, secret: str):
+async def _send_to_all(urls: list[tuple[str, str]], payload: dict, api_key: str, secret: str):
+    """운영 + 개발 서버에 동시 전송 (각각 독립적으로 재시도)"""
+    tasks = [_send_callback(label, url, payload, api_key, secret) for label, url in urls]
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+
+async def _send_callback(label: str, url: str, payload: dict, api_key: str, secret: str):
     """콜백 전송 (HMAC 서명 + 최대 3회 재시도)"""
     body = json.dumps(payload, ensure_ascii=True)
 
@@ -112,21 +125,21 @@ async def _send_callback(url: str, payload: dict, api_key: str, secret: str):
 
             if res.status_code < 300:
                 logger.info(
-                    f"[Callback] Report ready sent to ippeo "
+                    f"[Callback:{label}] Report ready sent "
                     f"(consultation={payload.get('consultation_id', '')[:8]}, status={res.status_code})"
                 )
                 return
             else:
                 logger.warning(
-                    f"[Callback] Ippeo returned {res.status_code}: {res.text[:200]} "
+                    f"[Callback:{label}] Ippeo returned {res.status_code}: {res.text[:200]} "
                     f"(attempt {attempt + 1}/3)"
                 )
         except Exception as e:
             logger.warning(
-                f"[Callback] Failed (attempt {attempt + 1}/3): {e}"
+                f"[Callback:{label}] Failed (attempt {attempt + 1}/3): {e}"
             )
 
     logger.error(
-        f"[Callback] All 3 attempts failed "
+        f"[Callback:{label}] All 3 attempts failed "
         f"(consultation={payload.get('consultation_id', '')[:8]})"
     )

@@ -17,7 +17,9 @@ const CLASSIFICATION_MAP: Record<string, string> = {
 };
 
 const REPORT_TYPE_BADGE: Record<string, { label: string; color: string }> = {
-  r1: { label: "👨‍⚕️ 의사용", color: "bg-purple-100 text-purple-800" },
+  r1: { label: "1차 사전상담", color: "bg-gray-100 text-gray-600" },
+  r2: { label: "2차 의료진", color: "bg-indigo-100 text-indigo-800" },
+  r3: { label: "3차 상담실장", color: "bg-purple-100 text-purple-800" },
   r4: { label: "👤 환자용", color: "bg-coral/10 text-coral" },
 };
 
@@ -110,7 +112,7 @@ export default function ReportsPage() {
           >
             <option value="all">유형 전체</option>
             <option value="r4">👤 환자용 (R4)</option>
-            <option value="r1">👨‍⚕️ 의사용 (R1)</option>
+            <option value="r3">3차 상담실장 (R3)</option>
           </select>
           <select
             value={statusFilter}

@@ -9,12 +9,12 @@
 ### 다중 리포트 타입 시스템 (R1~R4)
 
 상담 1건에서 최대 4종류의 리포트를 생성하는 아키텍처:
-- **R1 (의사용, 한국어)**: 상담 전 의사 브리핑용. 7섹션. `[현재 비활성화]`
-- **R2 (상담실장용, 한국어)**: R1 기반 운영 준비(리소스/비용/일정). 5섹션. `[현재 비활성화]`
-- **R3 (경영진용, 한국어)**: R1+R2 통합 경영 분석(마케팅/의료/환자관리 3기둥). 4섹션. `[현재 비활성화]`
+- **R1 (1차 상담리포트 - 사전상담, 한국어)**: CS 사전상담 요약. 3섹션. `[비활성화 — 추후 활성화 예정]`
+- **R2 (2차 상담리포트 - 의료진, 한국어)**: R3 기반 의료진 실무 준비(리소스/비용/일정). 5섹션. `[비활성화]`
+- **R3 (3차 상담리포트 - 상담실장, 한국어)**: 상담실장 브리핑용. 7섹션. `[활성 — 이뽀앱 연동]`
 - **R4 (고객용, 일본어)**: 소비자 발송용 리포트. 10섹션. `[현재 운영 중]`
 
-> ⚠️ R1~R3는 코드 구현 완료 상태이나 `[R1-R3 비활성화]` 주석으로 잠금. R4 테스트 완료 후 활성화 예정.
+> ⚠️ R3+R4가 이뽀앱 연동으로 활성화됨. R1~R2는 코드 구현 완료 상태이나 비활성화 주석으로 잠금.
 
 ---
 
@@ -29,7 +29,7 @@
 ### 백엔드
 - **프레임워크**: Python FastAPI (Python 3.13)
 - **배포**: Google Cloud Run (asia-northeast3)
-- **GitHub**: https://github.com/ybsk00/medihim_report (push 시 자동 배포)
+- **GitHub**: https://github.com/ybsk00/medihim_report (수동 배포: `cd backend && gcloud run deploy ippo-backend --source . --project=ipp0-medhim --region=asia-northeast3 --allow-unauthenticated`)
 - **용도**: AI 에이전트 파이프라인, YouTube 자막 수집, 벡터DB 구축, 이메일 발송
 
 ### 데이터베이스
@@ -99,10 +99,10 @@ ippeo/
 │   │   │   ├── ReportReviewPanel.tsx
 │   │   │   ├── ShareButton.tsx       # URL 공유 (링크 복사 + LINE)
 │   │   │   └── CTABadge.tsx
-│   │   ├── report-internal/     # 내부용 리포트 컴포넌트 [R1-R3 비활성화]
-│   │   │   ├── R1DoctorReport.tsx     # 의사용 리포트 렌더링 (보라색 테마)
-│   │   │   ├── R2DirectorReport.tsx   # 상담실장용 리포트 렌더링 (인디고 테마)
-│   │   │   └── R3ExecutiveReport.tsx  # 경영진용 리포트 렌더링 (오렌지 테마)
+│   │   ├── report-internal/     # 내부용 리포트 컴포넌트
+│   │   │   ├── R1CSReport.tsx          # CS 사전상담 리포트 [비활성화]
+│   │   │   ├── R2DirectorReport.tsx   # 의료진용 리포트 (인디고 테마) [비활성화]
+│   │   │   └── R3DirectorReport.tsx   # 상담실장용 리포트 (보라색 테마) [활성]
 │   │   └── report/              # 소비자 리포트 컴포넌트
 │   │       ├── ReportHeader.tsx
 │   │       ├── Section1Summary.tsx
@@ -138,9 +138,9 @@ ippeo/
 │   │   ├── validator.py         # 검증 에이전트
 │   │   ├── rag_agent.py         # RAG 에이전트 (과별 벡터DB 검색)
 │   │   ├── report_writer.py     # R4 리포트 작성 에이전트 (고객용, 일본어 10섹션)
-│   │   ├── r1_doctor_writer.py  # R1 리포트 작성 에이전트 (의사용, 한국어 7섹션) [비활성화]
-│   │   ├── r2_director_writer.py # R2 리포트 작성 에이전트 (상담실장용, 한국어 5섹션) [비활성화]
-│   │   ├── r3_executive_writer.py # R3 리포트 작성 에이전트 (경영진용, 한국어 4섹션) [비활성화]
+│   │   ├── r1_cs_writer.py      # R1 리포트 작성 에이전트 (CS 사전상담용, 한국어 3섹션) [비활성화]
+│   │   ├── r2_director_writer.py # R2 리포트 작성 에이전트 (의료진용, 한국어 5섹션) [비활성화]
+│   │   ├── r3_director_writer.py # R3 리포트 작성 에이전트 (상담실장용, 한국어 7섹션) [활성]
 │   │   ├── report_reviewer.py   # 검토 에이전트 (R1~R4 타입별 검토 기준, max 3회)
 │   │   ├── cta_analyzer.py      # CTA 분석 에이전트 (고객 발화 기반)
 │   │   └── korean_translator.py # 리포트 한글 번역 에이전트
@@ -287,7 +287,7 @@ CREATE TABLE reports (
     
     -- 발송 정보
     access_token TEXT UNIQUE,             -- 리포트 열람 URL 토큰
-    access_expires_at TIMESTAMPTZ,        -- 토큰 유효기간 (30일)
+    access_expires_at TIMESTAMPTZ,        -- 토큰 유효기간 (만료 체크 비활성화, 영구 열람 가능)
     
     -- 이메일 발송
     email_sent_at TIMESTAMPTZ,
@@ -465,7 +465,7 @@ $$;
     │ 검증 Agent     │ → 분류 확정 or 관리자 검토 플래그(unclassified)
     └────┬──────────┘
          │
-         │ (unclassified면 여기서 중단, 관리자 수동 분류 대기)
+         │ (unclassified면 폴백 R1+R4 자동 생성 후 콜백 전송)
          │
          ├──────────────────┐
          │                  │
@@ -481,7 +481,7 @@ $$;
          ┌────────▼─────────┐
          │ _generate_all_reports()  │
          │                         │
-         │ [R1] 의사용 (한국어)     │ → 7섹션 (비활성화)
+         │ [R1] 사전상담용 (한국어)  │ → 7섹션 (활성)
          │ [R2] 상담실장용 (한국어) │ → 5섹션, R1 기반 (비활성화)
          │ [R3] 경영진용 (한국어)   │ → 4섹션, R1+R2 기반 (비활성화)
          │ [R4] 고객용 (일본어)     │ → 10섹션 (활성)
@@ -613,7 +613,7 @@ async def generate_reports(data):
    - 피부 관리 맥락 단어 동반 → 피부과
      - "레이저, 하이푸, 울쎄라, 피부결, 주름 개선, 탄력, 리쥬란"과 함께 언급
 
-2. **맥락 단서 없으면** → `unclassified` (관리자 수동 분류 대기)
+2. **맥락 단서 없으면** → `unclassified` (폴백 리포트 자동 생성)
 
 #### 복합 니즈 예시
 - "여드름 흉터 심해서 코 높이고 싶어요" → 성형외과 (코 성형이 주 목적)
@@ -627,7 +627,7 @@ async def generate_reports(data):
 ```
 
 - 분류 신뢰도가 높고 명확 키워드 매칭이면 → 바로 확정
-- 경계 시술이거나 신뢰도 낮으면 → `unclassified`로 플래그, 파이프라인 중단
+- 경계 시술이거나 신뢰도 낮으면 → `unclassified`로 플래그, 폴백 리포트 자동 생성
 - `unclassified`인 상담은 관리자가 수동 분류 후 파이프라인 재개
 
 ### 6. RAG 에이전트 (rag_agent.py)
@@ -695,7 +695,7 @@ async def generate_reports(data):
 
 > 리포트 버전 이력: V2(7섹션) → V3(9섹션) → V4(10섹션, 현행). 프론트엔드에서 `isV3Report()` 함수로 V3+ 판별 (`section1_key_summary` 키 존재 여부).
 
-### 7-1. R1 의사용 리포트 (r1_doctor_writer.py) `[비활성화]`
+### 7-1. R1 사전상담 리포트 (r1_doctor_writer.py) `[활성 — 이뽀앱 연동]`
 
 ```
 입력: 원문 + 번역 + 의도추출 + 분류 + RAG + CTA + 화자분리
@@ -940,7 +940,7 @@ JSON 배열로 반환.
 ### 접근 방식
 - URL: `/report/{access_token}`
 - 본인 확인: 생년월일 입력 (토큰 + 생년월일 일치 시 열람 가능)
-- 유효기간: 30일
+- 유효기간: 없음 (영구 열람 가능, 만료 체크 비활성화)
 
 ### 디자인 사양
 - **모바일 최적화 필수** (일본 소비자 대부분 스마트폰 열람)
@@ -1040,7 +1040,7 @@ POST   /api/reports/delete               # 선택한 리포트 삭제
 ### 소비자 리포트
 
 ```
-GET    /api/public/report/{token}           # 리포트 열람 (토큰 + 유효기간 검증)
+GET    /api/public/report/{token}           # 리포트 열람 (토큰 검증, 만료 없음)
 POST   /api/public/report/{token}/verify    # 본인 확인 (생년월일)
 POST   /api/public/report/{token}/opened    # 열람 추적 (이메일 열람 기록)
 ```
@@ -1160,6 +1160,8 @@ INSERT INTO classification_keywords (category, keyword, context_keywords) VALUES
 - 다중 리포트 타입: R1~R4 아키텍처 구현 완료. R4만 활성, R1~R3 비활성화 대기
 - DB 마이그레이션: 001~007 완료 (report_type, input_language, customer_id 등)
 - 추가 기능: 고객 정보 인라인 편집, 일괄 승인, 리포트 재생성, 한국어 입력 지원, FAQ 재분류 스크립트
+- 이뽀 앱 연동: Webhook 수신 + iframe embed + 콜백 전송 구현 완료
+- 폴백 로직: 미분류/에러 시 폴백 R1+R4(한국어 포함) 자동 생성 + 이뽀 콜백 전송
 
 ---
 
@@ -1181,9 +1183,9 @@ INSERT INTO classification_keywords (category, keyword, context_keywords) VALUES
 1. **API 키는 절대 프론트엔드에 노출하지 않는다.** 모든 키는 .env에서 서버단으로만.
 2. **일본어 원문은 반드시 보존한다.** 번역 후에도 원문 DB에 남겨야 한다.
 3. **분류는 단일 분류 원칙.** 피부과 OR 성형외과, 혼합 불가.
-4. **미분류는 파이프라인 중단.** 관리자 수동 분류 후 재개.
+4. **미분류는 폴백 리포트 자동 생성.** 분류 불가 시 폴백 R1+R4(한국어 포함)를 생성하고 이뽀 콜백 전송. 파이프라인 중단 없음.
 5. **R4 리포트의 비용 정보는 AI 창작 금지.** RAG에 근거가 있을 때만 목안으로 표시.
-6. **CTA는 R4 고객 리포트에 넣지 않는다.** R1(의사용)에만 포함. 관리자페이지에서도 활용.
+6. **CTA는 R4 고객 리포트에 넣지 않는다.** R1(사전상담용)에만 포함. 관리자페이지에서도 활용.
 7. **벡터DB 검색 시 카테고리 필터 필수.** 피부과 상담에 성형외과 데이터가 나오면 안 된다.
 8. **YouTube 자동 자막 없는 영상은 스킵.** 처리하려고 시간 쓰지 말 것.
 9. **리포트 톤: 부드러운 제안형.** 단정형/명령형 절대 사용 금지.
@@ -1194,3 +1196,6 @@ INSERT INTO classification_keywords (category, keyword, context_keywords) VALUES
 14. **R1~R3 비활성화 주석 규칙.** `[R1-R3 비활성화]` 주석이 있는 코드 블록은 절대 삭제하지 말고 주석 상태 유지. 활성화 시 주석만 해제.
 15. **리포트 저장은 upsert.** `consultation_id + report_type`으로 기존 리포트가 있으면 update, 없으면 insert.
 16. **R4 리포트 톤: 중립형 간결체.** 과도한 감정 표현이나 단정형 금지. (최근 커밋에서 따뜻한 상세 문체 → 중립 간결체로 복원)
+17. **리포트 토큰 만료 없음.** access_expires_at 컬럼은 존재하나 만료 체크 비활성화. 영구 열람 가능.
+18. **폴백 리포트는 R4 한국어 번역본 포함.** `_build_fallback_r4_ko()`로 별도 생성, `report_data_ko`에 저장.
+19. **Cloud Run 배포는 수동.** `gcloud run deploy` 명령으로 직접 배포. 자동 배포 트리거 없음.

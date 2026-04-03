@@ -14,10 +14,10 @@ from agents.validator import validate_classification
 from agents.rag_agent import search_relevant_faq
 from agents.report_writer import write_report
 from agents.report_reviewer import review_report
-# [R2-R3 비활성화] R4 테스트 후 활성화 예정
+# [R1-R2 비활성화] 추후 활성화 예정
+# from agents.r1_cs_writer import write_r1_report
 # from agents.r2_director_writer import write_r2_report
-# from agents.r3_executive_writer import write_r3_report
-from agents.r1_doctor_writer import write_r1_report
+from agents.r3_director_writer import write_r3_report
 from services.ippeo_callback import notify_report_ready
 
 logger = logging.getLogger(__name__)
@@ -153,13 +153,13 @@ def _build_fallback_r4_ko(customer_name: str, classification: str) -> dict:
     }
 
 
-def _build_fallback_r1(customer_name: str, classification: str) -> dict:
-    """R1 의사용 폴백 리포트 (한국어, 7섹션 구조 유지)"""
+def _build_fallback_r3(customer_name: str, classification: str) -> dict:
+    """R3 상담실장용 폴백 리포트 (한국어, 7섹션 구조 유지)"""
     category_ko = "피부과" if classification == "dermatology" else "성형외과"
     today = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
 
     return {
-        "title": f"{customer_name} 환자 사전 브리핑",
+        "title": f"{customer_name} 환자 3차 상담리포트",
         "date": today,
         "section1_patient_overview": {
             "name": customer_name,
@@ -384,9 +384,9 @@ async def run_pipeline(consultation_id: str):
             fallback_r4 = _build_fallback_r4(customer_name, "plastic_surgery")
             fallback_r4_ko = _build_fallback_r4_ko(customer_name, "plastic_surgery")
             await _save_report(consultation_id, "r4", fallback_r4, [], 0, 3, report_data_ko=fallback_r4_ko)
-            fallback_r1 = _build_fallback_r1(customer_name, "plastic_surgery")
-            await _save_report(consultation_id, "r1", fallback_r1, [], 0, 3)
-            logger.info(f"[Pipeline:{consultation_id[:8]}] Unclassified fallback R1+R4 saved")
+            fallback_r3 = _build_fallback_r3(customer_name, "plastic_surgery")
+            await _save_report(consultation_id, "r3", fallback_r3, [], 0, 3)
+            logger.info(f"[Pipeline:{consultation_id[:8]}] Unclassified fallback R3+R4 saved")
             await _update_consultation(consultation_id, {
                 "status": "report_ready",
                 "error_message": "[폴백] 상담 내용이 부족하여 분류 불가 — 폴백 리포트 생성",
@@ -399,7 +399,7 @@ async def run_pipeline(consultation_id: str):
             return
 
         # ========================================
-        # Step 6~ : R1→R2→R3→R4 리포트 일괄 생성
+        # Step 6~ : R3→R4 리포트 일괄 생성 (R1/R2 비활성화)
         # ========================================
         await _generate_all_reports(
             consultation_id, cleaned_text, text_for_analysis,
@@ -414,15 +414,15 @@ async def run_pipeline(consultation_id: str):
         logger.error(f"[Pipeline:{consultation_id[:8]}] FAILED, saving fallback reports: {str(e)}", exc_info=True)
         await _log_agent(consultation_id, "pipeline", None, None, 0, "failed", str(e))
 
-        # 폴백 리포트 저장 (R1 + R4)
+        # 폴백 리포트 저장 (R3 + R4)
         fallback_classification = consultation.get("classification") or "plastic_surgery"
         try:
             fallback_r4 = _build_fallback_r4(customer_name, fallback_classification)
             fallback_r4_ko = _build_fallback_r4_ko(customer_name, fallback_classification)
             await _save_report(consultation_id, "r4", fallback_r4, [], 0, 3, report_data_ko=fallback_r4_ko)
-            fallback_r1 = _build_fallback_r1(customer_name, fallback_classification)
-            await _save_report(consultation_id, "r1", fallback_r1, [], 0, 3)
-            logger.info(f"[Pipeline:{consultation_id[:8]}] Fallback R1+R4 saved")
+            fallback_r3 = _build_fallback_r3(customer_name, fallback_classification)
+            await _save_report(consultation_id, "r3", fallback_r3, [], 0, 3)
+            logger.info(f"[Pipeline:{consultation_id[:8]}] Fallback R3+R4 saved")
             await _update_consultation(consultation_id, {
                 "status": "report_ready",
                 "error_message": f"[폴백] {str(e)}",
@@ -591,7 +591,7 @@ async def _generate_all_reports(
     speaker_segments: list | None = None,
     input_lang: str = "ja",
 ):
-    """R1→R2→R3→R4 순차 생성. R1 실패 시 R4만 생성 (graceful degradation)."""
+    """R3→R4 순차 생성. R3 실패 시 R4만 생성 (graceful degradation). R1/R2 비활성화."""
     db = get_supabase()
 
     await _update_consultation(consultation_id, {"status": "report_generating"})
@@ -611,59 +611,33 @@ async def _generate_all_reports(
         {"result_count": len(rag_results)}, duration, "success",
     )
 
-    # Step 7-R1: 의사 리포트 (한국어) — 이뽀 앱 연동용 활성화
-    r1_data = None
+    # [R1 비활성화] 1차 상담리포트 - 사전상담 CS용 (추후 활성화)
+    # r1_data = await _write_and_review(
+    #     consultation_id, "r1", write_r1_report, {...}, rag_results)
+
+    # [R2 비활성화] 2차 상담리포트 - 의료진 (추후 활성화)
+    # r2_data = await _write_and_review(
+    #     consultation_id, "r2", write_r2_report,
+    #     {"r1_report_data": r1_data, ...}, rag_results)
+
+    # Step 7-R3: 상담실장 리포트 (한국어) — 이뽀 앱 연동용 활성화
+    r3_data = None
     try:
-        r1_data = await _write_and_review(
-            consultation_id, "r1", write_r1_report,
+        r3_data = await _write_and_review(
+            consultation_id, "r3", write_r3_report,
             {"original_text": original_text, "translated_text": translated_text,
              "intent_extraction": intent, "classification": classification,
              "rag_results": rag_results, "customer_name": customer_name,
              "cta_level": cta_level, "cta_signals": cta_signals,
              "speaker_segments": speaker_segments, "input_lang": input_lang},
             rag_results)
-        logger.info(f"[Pipeline:{consultation_id[:8]}] R1 complete")
+        logger.info(f"[Pipeline:{consultation_id[:8]}] R3 complete")
     except Exception as e:
-        logger.error(f"[Pipeline:{consultation_id[:8]}] R1 failed, saving fallback: {str(e)}", exc_info=True)
-        await _log_agent(consultation_id, "r1_writer", None, None, 0, "failed", str(e))
-        # 폴백 R1 리포트 저장 (R1은 한국어 전용이므로 report_data_ko 불필요)
-        fallback_r1 = _build_fallback_r1(customer_name, classification)
-        await _save_report(consultation_id, "r1", fallback_r1, rag_results, 0, 3)
-        logger.info(f"[Pipeline:{consultation_id[:8]}] R1 fallback saved")
-
-    # [R2-R3 비활성화] R4 테스트 후 활성화 예정
-    # r2_data = None
-    # if r1_data:
-    #     try:
-    #         r2_data = await _write_and_review(
-    #             consultation_id, "r2", write_r2_report,
-    #             {"r1_report_data": r1_data, "intent_extraction": intent,
-    #              "classification": classification, "rag_results": rag_results,
-    #              "customer_name": customer_name, "cta_level": cta_level,
-    #              "cta_signals": cta_signals},
-    #             rag_results)
-    #         logger.info(f"[Pipeline:{consultation_id[:8]}] R2 complete")
-    #     except Exception as e:
-    #         logger.error(f"[Pipeline:{consultation_id[:8]}] R2 failed: {str(e)}", exc_info=True)
-    #         await _log_agent(consultation_id, "r2_writer", None, None, 0, "failed", str(e))
-    # else:
-    #     logger.warning(f"[Pipeline:{consultation_id[:8]}] R2 skipped (R1 failed)")
-    #
-    # if r1_data and r2_data:
-    #     try:
-    #         await _write_and_review(
-    #             consultation_id, "r3", write_r3_report,
-    #             {"r1_report_data": r1_data, "r2_report_data": r2_data,
-    #              "intent_extraction": intent, "classification": classification,
-    #              "customer_name": customer_name, "cta_level": cta_level,
-    #              "cta_signals": cta_signals},
-    #             rag_results)
-    #         logger.info(f"[Pipeline:{consultation_id[:8]}] R3 complete")
-    #     except Exception as e:
-    #         logger.error(f"[Pipeline:{consultation_id[:8]}] R3 failed: {str(e)}", exc_info=True)
-    #         await _log_agent(consultation_id, "r3_writer", None, None, 0, "failed", str(e))
-    # else:
-    #     logger.warning(f"[Pipeline:{consultation_id[:8]}] R3 skipped (R1 or R2 failed)")
+        logger.error(f"[Pipeline:{consultation_id[:8]}] R3 failed, saving fallback: {str(e)}", exc_info=True)
+        await _log_agent(consultation_id, "r3_writer", None, None, 0, "failed", str(e))
+        fallback_r3 = _build_fallback_r3(customer_name, classification)
+        await _save_report(consultation_id, "r3", fallback_r3, rag_results, 0, 3)
+        logger.info(f"[Pipeline:{consultation_id[:8]}] R3 fallback saved")
 
     # ========================================
     # Step 7-R4: 고객 리포트 (일본어, 기존 로직)
@@ -809,23 +783,40 @@ async def regenerate_report(report_id: str, direction: str):
         )
 
         # 3. 리포트 타입별 재생성
-        # [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
-        # if report_type == "r1":
-        #     await _write_and_review(...)
-        # elif report_type == "r2":
-        #     ...
-        # elif report_type == "r3":
-        #     ...
-        # else:  # r4
+        # 기존 리포트 레코드 업데이트용 공통 변수
+        access_token = report.get("access_token") or uuid.uuid4().hex
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(days=30)
 
-        if True:  # R4 only (R1-R3 비활성화 상태)
-            # 병원 정보 추출 (intent_extraction에서)
+        if report_type == "r3":
+            # R3 상담실장 리포트 재생성
+            regen_data = await _write_and_review(
+                consultation_id, "r3", write_r3_report,
+                {"original_text": original_text, "translated_text": translated_text,
+                 "intent_extraction": intent, "classification": classification,
+                 "rag_results": rag_results, "customer_name": customer_name,
+                 "cta_level": cta_level, "cta_signals": cta_signals,
+                 "speaker_segments": speaker_segments,
+                 "admin_direction": direction, "input_lang": input_lang},
+                rag_results)
+
+            db.table("reports").update({
+                "report_data": regen_data,
+                "rag_context": rag_results,
+                "review_count": 1,
+                "review_passed": True,
+                "access_token": access_token,
+                "access_expires_at": expires_at.isoformat(),
+                "status": "draft",
+            }).eq("id", report_id).execute()
+
+        else:  # R4 (기본)
             regen_hospital_mentions = intent.get("hospital_mentions", []) if intent else []
 
             r4_report_data = None
             r4_review_count = 0
             max_retries = 3
-            current_direction = direction  # 관리자 지시 보존, 리뷰 피드백은 여기에 추가
+            current_direction = direction
 
             for attempt in range(max_retries):
                 start = time.time()
@@ -855,11 +846,6 @@ async def regenerate_report(report_id: str, direction: str):
                 if attempt < max_retries - 1:
                     feedback = review.get("feedback", "")
                     current_direction = f"{direction}\n[レビューフィードバック: {feedback}]"
-
-            # 기존 리포트 레코드 업데이트
-            access_token = report.get("access_token") or uuid.uuid4().hex
-            now = datetime.now(timezone.utc)
-            expires_at = now + timedelta(days=30)
 
             db.table("reports").update({
                 "report_data": r4_report_data,

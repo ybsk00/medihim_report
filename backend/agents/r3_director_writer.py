@@ -6,8 +6,8 @@ from services.gemini_client import generate_json, safe_parse_json
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_INSTRUCTION = """당신은 의료 상담 브리핑 전문 작성자입니다.
-의사가 환자를 진료하기 전에 참고할 수 있는 사전 브리핑 리포트를 한국어로 작성합니다.
+SYSTEM_INSTRUCTION = """당신은 3차 상담리포트 전문 작성자입니다. (상담실장용)
+상담실장이 환자를 상담하기 전에 참고할 수 있는 상담 브리핑 리포트를 한국어로 작성합니다.
 
 톤 & 매너:
 - 의료 전문 용어를 정확하게 사용
@@ -26,7 +26,7 @@ SYSTEM_INSTRUCTION = """당신은 의료 상담 브리핑 전문 작성자입니
 7. 사전 참고사항 — 예비 소견, 추천 검사, 주의점"""
 
 
-async def write_r1_report(
+async def write_r3_report(
     original_text: str,
     translated_text: str,
     intent_extraction: dict,
@@ -82,7 +82,7 @@ async def write_r1_report(
     now_kst = datetime.now(kst)
     date_str = f"{now_kst.year}년 {now_kst.month}월 {now_kst.day}일"
 
-    prompt = f"""다음 상담 정보를 바탕으로 의사용 사전 브리핑 리포트를 JSON 형식으로 작성하세요.
+    prompt = f"""다음 상담 정보를 바탕으로 상담실장용 브리핑 리포트를 JSON 형식으로 작성하세요.
 각 항목은 1~2문 이내로 간결하게 작성하고, 상담에서 실제 언급된 내용만 기재하세요.
 
 == 분류 ==
@@ -105,7 +105,7 @@ async def write_r1_report(
 {admin_direction_section}
 == 출력 JSON 형식 ==
 {{
-    "title": "{customer_name} 환자 — {category_label} 사전 브리핑",
+    "title": "{customer_name} 환자 — {category_label} 3차 상담리포트",
     "date": "{date_str}",
 
     "section1_patient_overview": {{
@@ -182,11 +182,11 @@ async def write_r1_report(
                 report = report[0] if report else {}
             break
         except json.JSONDecodeError as e:
-            logger.warning(f"[R1Writer] JSON parse error (attempt {parse_attempt + 1}): {str(e)[:100]}")
+            logger.warning(f"[R3Writer] JSON parse error (attempt {parse_attempt + 1}): {str(e)[:100]}")
             if parse_attempt == 0:
                 await asyncio.sleep(3)
             else:
-                raise ValueError(f"R1 Report JSON parse failed after 2 attempts: {str(e)}")
+                raise ValueError(f"R3 Report JSON parse failed after 2 attempts: {str(e)}")
 
     report["date"] = date_str
     return report

@@ -67,7 +67,7 @@ export interface Consultation {
   updated_at: string;
 }
 
-// [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
+// R1(사전상담 CS), R2(의료진) 비활성화 / R3(상담실장), R4(고객용) 활성화
 export type ReportType = "r1" | "r2" | "r3" | "r4";
 
 export interface Report {
@@ -96,8 +96,30 @@ export interface Report {
   };
 }
 
-// R1 의사용 리포트 데이터 (한국어, 7섹션)
+// R1 CS 사전상담 리포트 데이터 (한국어, 3섹션) [비활성화]
 export interface R1ReportData {
+  title: string;
+  date: string;
+  section1_consultation_overview: {
+    name: string;
+    classification: string;
+    consultation_date: string;
+    summary: string;
+  };
+  section2_customer_needs: {
+    main_concerns: string[];
+    desired_procedures: string[];
+    expectations: string;
+  };
+  section3_follow_up: {
+    next_steps: string[];
+    additional_checks: string[];
+  };
+  [key: string]: unknown;
+}
+
+// R3 상담실장 리포트 데이터 (한국어, 7섹션) [활성화]
+export interface R3ReportData {
   title: string;
   date: string;
   section1_patient_overview: {
@@ -135,8 +157,7 @@ export interface R1ReportData {
   [key: string]: unknown;
 }
 
-// [R1-R3 비활성화] R2ReportData, R3ReportData 인터페이스는
-// frontend/components/report-internal/ 파일 참조
+// [비활성화] R2ReportData 인터페이스는 frontend/components/report-internal/R2DirectorReport.tsx 참조
 
 // 리포트 데이터 (V3 9섹션 + V4 10섹션 호환)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

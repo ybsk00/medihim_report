@@ -12,8 +12,8 @@ import Section7Risks from "@/components/report/Section7Risks";
 import Section8VisitDate from "@/components/report/Section8VisitDate";
 import Section9IppeoMessage from "@/components/report/Section9IppeoMessage";
 import ReportFooter from "@/components/report/ReportFooter";
-import R1DoctorReport from "@/components/report-internal/R1DoctorReport";
-import { type ReportData, type R1ReportData, isV3Report } from "@/lib/api";
+import R3DirectorReport from "@/components/report-internal/R3DirectorReport";
+import { type ReportData, type R3ReportData, isV3Report } from "@/lib/api";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "/api";
@@ -162,11 +162,11 @@ export default function EmbedClient({
     );
   }
 
-  // R1 의사용 리포트 렌더링 (자체 헤더/푸터 포함)
-  if (reportType === "r1") {
+  // R3 상담실장 리포트 렌더링 (자체 헤더/푸터 포함)
+  if (reportType === "r3") {
     return (
       <div ref={containerRef} className="font-[Pretendard,Noto_Sans_KR,sans-serif]">
-        <R1DoctorReport data={report as R1ReportData} />
+        <R3DirectorReport data={report as R3ReportData} />
       </div>
     );
   }
@@ -193,12 +193,12 @@ export default function EmbedClient({
     <div ref={containerRef} className="font-[Noto_Sans_JP] bg-[#FAFAFA] min-h-screen">
       <div className="max-w-[480px] mx-auto bg-[#FAFAFA] min-h-screen shadow-[0_0_20px_rgba(0,0,0,0.05)]">
       {/* Header */}
-      <ReportHeader title={data.title} date={data.date} />
+      <ReportHeader title={data.title} date={data.date} lang={currentLang} />
 
       {/* Sections */}
       <div className="px-4 py-6 space-y-8">
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[0] = el; }}>
-          <Section1KeySummary points={data.section1_key_summary.points} />
+          <Section1KeySummary points={data.section1_key_summary.points} lang={currentLang} />
         </div>
 
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[1] = el; }}>
@@ -206,6 +206,7 @@ export default function EmbedClient({
             intro={data.section2_cause_analysis.intro}
             causes={data.section2_cause_analysis.causes}
             conclusion={data.section2_cause_analysis.conclusion}
+            lang={currentLang}
           />
         </div>
 
@@ -214,6 +215,7 @@ export default function EmbedClient({
             primary={data.section3_recommendation.primary}
             secondary={data.section3_recommendation.secondary}
             goal={data.section3_recommendation.goal}
+            lang={currentLang}
           />
         </div>
 
@@ -221,19 +223,20 @@ export default function EmbedClient({
           <Section4Recovery
             timeline={data.section4_recovery.timeline}
             note={data.section4_recovery.note}
+            lang={currentLang}
           />
         </div>
 
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[4] = el; }}>
-          <Section5ScarInfo points={data.section5_scar_info.points} />
+          <Section5ScarInfo points={data.section5_scar_info.points} lang={currentLang} />
         </div>
 
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[5] = el; }}>
-          <Section6Precautions points={data.section6_precautions.points} />
+          <Section6Precautions points={data.section6_precautions.points} lang={currentLang} />
         </div>
 
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[6] = el; }}>
-          <Section7Risks points={data.section7_risks.points} />
+          <Section7Risks points={data.section7_risks.points} lang={currentLang} />
         </div>
 
         {/* 비용 섹션 (V4) */}
@@ -242,7 +245,7 @@ export default function EmbedClient({
             <section>
               <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
                 <span className="block w-1 h-6 bg-coral rounded-full"></span>
-                予想費用範囲
+                {currentLang === "ko" ? "예상 비용 범위" : "予想費用範囲"}
               </h3>
               <div className="bg-white rounded-xl p-5 card-shadow">
                 <ul className="space-y-2">
@@ -264,8 +267,9 @@ export default function EmbedClient({
         {/* 내원 예정일 */}
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[8] = el; }}>
           <Section8VisitDate
-            date={(data.section9_visit_date?.date ?? data.section8_visit_date?.date) || "未定"}
+            date={(data.section9_visit_date?.date ?? data.section8_visit_date?.date) || (currentLang === "ko" ? "미정" : "未定")}
             note={data.section9_visit_date?.note ?? data.section8_visit_date?.note}
+            lang={currentLang}
           />
         </div>
 
@@ -274,6 +278,7 @@ export default function EmbedClient({
           <Section9IppeoMessage
             paragraphs={(data.section10_ippeo_message?.paragraphs ?? data.section9_ippeo_message?.paragraphs) || []}
             final_summary={(data.section10_ippeo_message?.final_summary ?? data.section9_ippeo_message?.final_summary) || ""}
+            lang={currentLang}
           />
         </div>
       </div>

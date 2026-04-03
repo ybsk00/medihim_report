@@ -6,18 +6,18 @@ from services.gemini_client import generate_json, safe_parse_json
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_INSTRUCTION = """당신은 병원 운영 브리핑 전문 작성자입니다.
-상담실장이 시술 준비 및 환자 응대에 참고할 수 있는 운영 리포트를 한국어로 작성합니다.
+SYSTEM_INSTRUCTION = """당신은 2차 상담리포트 전문 작성자입니다. (의료진용)
+의료진이 시술 준비 및 환자 응대에 참고할 수 있는 의료진 리포트를 한국어로 작성합니다.
 
 톤 & 매너:
 - 실무 중심의 간결한 서술
 - 구체적인 리소스, 일정, 비용 정보 포함
 - 비용 추정은 허용하되 반드시 "추정치" 라벨을 표시
-- 의사 리포트(R1)의 소견을 기반으로 확장
+- 상담실장 리포트(R3)의 소견을 기반으로 확장
 - 각 항목 1~2문 이내
 
 구성 (5섹션):
-1. 시술 요약 — R1 기반 의사 소견 + 추천 시술 목록
+1. 시술 요약 — R3 기반 상담실장 소견 + 추천 시술 목록
 2. 필요 리소스 — 장비, 재료, 인력, 예상 시간
 3. 비용 계획 — AI 추정 허용 (추정치 라벨 필수)
 4. 일정 계획 — 사전 검사, 시술일, 입원 기간, 후속 일정
@@ -60,8 +60,8 @@ async def write_r2_report(
     now_kst = datetime.now(kst)
     date_str = f"{now_kst.year}년 {now_kst.month}월 {now_kst.day}일"
 
-    prompt = f"""다음 정보를 바탕으로 상담실장용 운영 리포트를 JSON 형식으로 작성하세요.
-R1 의사 리포트의 소견을 기반으로, 실무 관점에서 시술 준비 및 환자 응대 정보를 정리합니다.
+    prompt = f"""다음 정보를 바탕으로 의료진용 2차 상담리포트를 JSON 형식으로 작성하세요.
+R3 상담실장 리포트의 소견을 기반으로, 실무 관점에서 시술 준비 및 환자 응대 정보를 정리합니다.
 
 == 분류 ==
 {category_label}
@@ -69,7 +69,7 @@ R1 의사 리포트의 소견을 기반으로, 실무 관점에서 시술 준비
 == 환자명 ==
 {customer_name}
 
-== R1 의사 리포트 (참조) ==
+== R3 상담실장 리포트 (참조) ==
 {json.dumps(r1_report_data, ensure_ascii=False, indent=2)}
 
 == 의도 추출 결과 ==
@@ -83,7 +83,7 @@ R1 의사 리포트의 소견을 기반으로, 실무 관점에서 시술 준비
 {admin_direction_section}
 == 출력 JSON 형식 ==
 {{
-    "title": "{customer_name} 환자 — {category_label} 운영 브리핑",
+    "title": "{customer_name} 환자 — {category_label} 2차 상담리포트",
     "date": "{date_str}",
 
     "section1_procedure_summary": {{
@@ -133,7 +133,7 @@ R1 의사 리포트의 소견을 기반으로, 실무 관점에서 시술 준비
 
 중요 규칙:
 - 비용 추정은 허용하되, is_estimate: true와 "추정치" 표시 필수
-- R1 의사 소견과 모순되지 않도록 작성
+- R3 상담실장 소견과 모순되지 않도록 작성
 - 각 항목 1~2문 이내 간결하게
 - 5섹션 모두 필수
 - 실무에 바로 활용 가능한 구체적 정보 기재"""
