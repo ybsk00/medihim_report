@@ -481,9 +481,9 @@ $$;
          ┌────────▼─────────┐
          │ _generate_all_reports()  │
          │                         │
-         │ [R1] 사전상담용 (한국어)  │ → 7섹션 (활성)
-         │ [R2] 상담실장용 (한국어) │ → 5섹션, R1 기반 (비활성화)
-         │ [R3] 경영진용 (한국어)   │ → 4섹션, R1+R2 기반 (비활성화)
+         │ [R1] 사전상담 CS (한국어) │ → 3섹션 (비활성화)
+         │ [R2] 의료진 (한국어)     │ → 5섹션 (비활성화)
+         │ [R3] 상담실장 (한국어)   │ → 7섹션 (활성)
          │ [R4] 고객용 (일본어)     │ → 10섹션 (활성)
          └────────┬─────────┘
                   │ (각 타입별)
@@ -1157,11 +1157,12 @@ INSERT INTO classification_keywords (category, keyword, context_keywords) VALUES
 - Phase 3 (프론트엔드): 완료 — 관리자페이지 + 소비자 리포트 + 내부 리포트 컴포넌트(R1~R3)
 - Phase 4 (배포): 완료 — Cloud Run (백엔드) + Firebase (프론트엔드)
 - 벡터DB 파이프라인: 완료 — YouTube 2,448 + PubMed 2,336 = 4,784 벡터
-- 다중 리포트 타입: R1~R4 아키텍처 구현 완료. R4만 활성, R1~R3 비활성화 대기
-- DB 마이그레이션: 001~007 완료 (report_type, input_language, customer_id 등)
+- 다중 리포트 타입: R1(CS사전상담,비활성) R2(의료진,비활성) R3(상담실장,활성) R4(고객용,활성)
+- DB 마이그레이션: 001~009 완료 (009: report_type r1→r3 재구조화)
 - 추가 기능: 고객 정보 인라인 편집, 일괄 승인, 리포트 재생성, 한국어 입력 지원, FAQ 재분류 스크립트
 - 이뽀 앱 연동: Webhook 수신 + iframe embed + 콜백 전송 구현 완료
-- 폴백 로직: 미분류/에러 시 폴백 R1+R4(한국어 포함) 자동 생성 + 이뽀 콜백 전송
+- 폴백 로직: 미분류/에러 시 폴백 R3+R4(한국어 포함) 자동 생성 + 이뽀 콜백 전송
+- 주간 헬스체크: Cloud Scheduler 매주 금요일 18:10 KST → `POST /api/health/weekly-report` → 이메일 자동 발송
 
 ---
 
@@ -1193,9 +1194,9 @@ INSERT INTO classification_keywords (category, keyword, context_keywords) VALUES
 11. **Gemini API JSON 응답 방어.** `json.loads()` 후 `isinstance(data, list)` 체크 필수 (가끔 `[{...}]` 반환).
 12. **Supabase select() 페이지네이션.** 기본 1000행 제한. `.range(offset, offset+999)` 루프 필요.
 13. **이메일 발송 실패가 승인을 블로킹하면 안 됨.** 승인과 이메일 발송은 별도 동작.
-14. **R1~R3 비활성화 주석 규칙.** `[R1-R3 비활성화]` 주석이 있는 코드 블록은 절대 삭제하지 말고 주석 상태 유지. 활성화 시 주석만 해제.
+14. **R1~R2 비활성화 주석 규칙.** R1(CS사전상담), R2(의료진) 관련 코드 블록은 비활성화 주석 상태 유지. 활성화 시 주석만 해제.
 15. **리포트 저장은 upsert.** `consultation_id + report_type`으로 기존 리포트가 있으면 update, 없으면 insert.
 16. **R4 리포트 톤: 중립형 간결체.** 과도한 감정 표현이나 단정형 금지. (최근 커밋에서 따뜻한 상세 문체 → 중립 간결체로 복원)
 17. **리포트 토큰 만료 없음.** access_expires_at 컬럼은 존재하나 만료 체크 비활성화. 영구 열람 가능.
-18. **폴백 리포트는 R4 한국어 번역본 포함.** `_build_fallback_r4_ko()`로 별도 생성, `report_data_ko`에 저장.
+18. **폴백 리포트는 R3+R4 쌍으로 생성.** `_build_fallback_r3()` + `_build_fallback_r4()` + `_build_fallback_r4_ko()` 세트.
 19. **Cloud Run 배포는 수동.** `gcloud run deploy` 명령으로 직접 배포. 자동 배포 트리거 없음.
