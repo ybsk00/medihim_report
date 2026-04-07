@@ -93,6 +93,20 @@ async def notify_report_ready(consultation_id: str):
                     "ko": f"{embed_base}/doctor/ko/{token}",
                 },
             }
+        elif r["report_type"] == "r1":
+            payload["pre_consultation_report"] = {
+                "report_token": token,
+                "embed_url": {
+                    "ko": f"{embed_base}/doctor/ko/{token}",
+                },
+            }
+        elif r["report_type"] == "r2":
+            payload["medical_report"] = {
+                "report_token": token,
+                "embed_url": {
+                    "ko": f"{embed_base}/doctor/ko/{token}",
+                },
+            }
 
     await _send_to_all(callback_urls, payload, IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET)
 

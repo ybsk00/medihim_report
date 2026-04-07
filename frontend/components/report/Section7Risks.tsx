@@ -1,15 +1,16 @@
 interface Section7RisksProps {
   points: string[];
+  lang?: string;
 }
 
-export default function Section7Risks({ points }: Section7RisksProps) {
+export default function Section7Risks({ points, lang = "ja" }: Section7RisksProps) {
   const filtered = points.filter((p) => p && p.trim());
   if (filtered.length === 0) return null;
   return (
     <section>
       <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
         <span className="block w-1 h-6 bg-coral rounded-full"></span>
-        リスクまとめ
+        {lang === "ko" ? "리스크 요약" : "リスクまとめ"}
       </h3>
       <div className="bg-white rounded-xl p-5 card-shadow">
         <ul className="space-y-2">

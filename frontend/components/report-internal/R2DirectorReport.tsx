@@ -1,196 +1,246 @@
-// @ts-nocheck
-// [R1-R3 비활성화] 28일 R4 테스트 후 활성화 예정
 "use client";
 
-import { R2ReportData } from "@/lib/api";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 interface Props {
-  data: R2ReportData;
+  data: any;
 }
 
 export default function R2DirectorReport({ data }: Props) {
-  const s1 = data.section1_procedure_summary;
-  const s2 = data.section2_resource_requirements;
-  const s3 = data.section3_cost_planning;
-  const s4 = data.section4_scheduling;
-  const s5 = data.section5_patient_readiness;
+  const s1 = data.section1_patient_summary;
+  const s2 = data.section2_medical_assessment;
+  const s3 = data.section3_treatment_options;
+  const s4 = data.section4_clinical_considerations;
+  const s5 = data.section5_pre_consultation_notes;
 
   return (
-    <div className="space-y-5">
-      {/* 타이틀 */}
-      <div className="text-center mb-6">
-        <h2 className="text-lg font-bold text-gray-800">{data.title}</h2>
-        <p className="text-sm text-gray-500">{data.date}</p>
-      </div>
+    <div className="min-h-screen bg-[#EEEDF5]">
+      <div className="max-w-[480px] mx-auto bg-[#EEEDF5] min-h-screen shadow-[0_0_20px_rgba(0,0,0,0.05)]">
+        {/* Header */}
+        <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-indigo-100 px-5 py-5">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <img src="/ippeo-logo.png" alt="IPPEO" className="w-5 h-5 rounded" />
+            <h1 className="text-xs font-bold text-gray-500 tracking-tight">
+              IPPEO | 2차 의사용 리포트
+            </h1>
+            <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
+              의사
+            </span>
+          </div>
+          <div className="text-center">
+            <h2 className="text-xl font-black text-gray-800 leading-tight">{data.title}</h2>
+            <p className="text-[11px] text-gray-400 mt-2 font-medium">
+              {data.date?.startsWith("작성일") ? data.date : `작성일: ${data.date}`}
+            </p>
+          </div>
+        </header>
 
-      {/* Section 1: 시술 요약 */}
-      {s1 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-bold text-indigo-700 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center text-xs">1</span>
-            시술 요약
-          </h3>
-          {s1.doctor_opinion && <p className="text-sm text-gray-700 mb-3">{s1.doctor_opinion}</p>}
-          {s1.recommended_procedures?.length > 0 && (
-            <div className="space-y-2">
-              {s1.recommended_procedures.map((proc, i) => (
-                <div key={i} className="bg-gray-50 rounded-lg p-3 flex items-start justify-between">
+        {/* Sections */}
+        <div className="px-4 py-6 space-y-8">
+
+          {/* Section 1: 환자 요약 */}
+          {s1 && (
+            <section>
+              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="block w-1 h-6 bg-indigo-500 rounded-full"></span>
+                <span className="text-indigo-600 font-black mr-0.5">01</span>
+                환자 요약
+              </h3>
+              <div className="bg-white rounded-xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border-l-4 border-indigo-400">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-400 font-medium">환자명</p>
+                    <p className="font-bold text-gray-800 text-base">{s1.name}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-400 font-medium">상담일</p>
+                    <p className="font-medium text-gray-700">{s1.consultation_date}</p>
+                  </div>
+                  <div className="space-y-1 col-span-2">
+                    <p className="text-xs text-gray-400 font-medium">분류</p>
+                    <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-700">
+                      {s1.classification === "성형외과" ? "🏥" : "💊"} {s1.classification}
+                    </span>
+                  </div>
+                </div>
+                {s1.chief_complaint && (
+                  <div className="mt-4 pt-4 border-t border-indigo-50">
+                    <p className="text-xs font-medium text-indigo-600 mb-1">주소 (Chief Complaint)</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{s1.chief_complaint}</p>
+                  </div>
+                )}
+                {s1.consultation_history && (
+                  <div className="mt-3 bg-indigo-50 rounded-lg p-3">
+                    <p className="text-xs font-medium text-indigo-600 mb-1">이전 상담 이력</p>
+                    <p className="text-sm text-gray-700">{s1.consultation_history}</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Section 2: 의학적 평가 */}
+          {s2 && (
+            <section>
+              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="block w-1 h-6 bg-indigo-500 rounded-full"></span>
+                <span className="text-indigo-600 font-black mr-0.5">02</span>
+                의학적 평가
+              </h3>
+              <div className="bg-white rounded-xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+                {s2.current_condition && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-gray-500 mb-1">현재 상태</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{s2.current_condition}</p>
+                  </div>
+                )}
+                {s2.relevant_history && (
+                  <div className="bg-indigo-50 rounded-lg p-3 mb-4">
+                    <p className="text-xs font-medium text-indigo-600 mb-1">관련 병력</p>
+                    <p className="text-sm text-gray-700">{s2.relevant_history}</p>
+                  </div>
+                )}
+                {s2.key_findings?.length > 0 && (
                   <div>
-                    <span className="text-sm font-medium text-gray-800">{proc.name}</span>
-                    <p className="text-xs text-gray-600 mt-0.5">{proc.note}</p>
+                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">핵심 소견</p>
+                    <ul className="space-y-2">
+                      {s2.key_findings.map((f: string, i: number) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="mt-0.5 w-4 h-4 bg-indigo-100 rounded flex items-center justify-center flex-shrink-0">
+                            <span className="text-indigo-600 text-[10px] font-bold">{i + 1}</span>
+                          </span>
+                          <span className="text-sm text-gray-700">{f}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    proc.priority === 'primary' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'
-                  }`}>{proc.priority === 'primary' ? '1차' : '2차'}</span>
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
+            </section>
           )}
-        </div>
-      )}
 
-      {/* Section 2: 필요 리소스 */}
-      {s2 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-bold text-indigo-700 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center text-xs">2</span>
-            필요 리소스
-          </h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-xs font-medium text-gray-500 block mb-1">장비</span>
-              {s2.equipment?.map((e, i) => (
-                <p key={i} className="text-gray-700">• {e}</p>
-              ))}
-            </div>
-            <div>
-              <span className="text-xs font-medium text-gray-500 block mb-1">재료</span>
-              {s2.materials?.map((m, i) => (
-                <p key={i} className="text-gray-700">• {m}</p>
-              ))}
-            </div>
-            <div>
-              <span className="text-xs font-medium text-gray-500 block mb-1">인력</span>
-              <p className="text-gray-700">{s2.staff}</p>
-            </div>
-            <div>
-              <span className="text-xs font-medium text-gray-500 block mb-1">예상 시간</span>
-              <p className="text-gray-700">{s2.estimated_duration}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Section 3: 비용 계획 */}
-      {s3 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-bold text-indigo-700 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center text-xs">3</span>
-            비용 계획
-          </h3>
-          {s3.items?.length > 0 && (
-            <div className="space-y-2 mb-3">
-              {s3.items.map((item, i) => (
-                <div key={i} className="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
-                  <span className="text-sm text-gray-800">{item.procedure}</span>
-                  <div className="text-right">
-                    <span className="text-sm font-medium text-gray-800">{item.estimated_cost}</span>
-                    {item.is_estimate && (
-                      <span className="text-xs text-orange-600 ml-1">(추정치)</span>
-                    )}
+          {/* Section 3: 시술 옵션 */}
+          {s3 && (
+            <section>
+              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="block w-1 h-6 bg-indigo-500 rounded-full"></span>
+                <span className="text-indigo-600 font-black mr-0.5">03</span>
+                시술 옵션
+              </h3>
+              <div className="space-y-3">
+                {s3.recommended_procedures?.map((proc: any, i: number) => (
+                  <div key={i} className="bg-white rounded-xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border-l-4 border-indigo-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-bold text-gray-800">{proc.name}</span>
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                        proc.priority === "primary" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600"
+                      }`}>
+                        {proc.priority === "primary" ? "1차 추천" : "대안"}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600">{proc.rationale}</p>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+                {s3.alternative_approaches?.length > 0 && s3.alternative_approaches[0] && (
+                  <div className="bg-white rounded-xl p-4 shadow-sm">
+                    <p className="text-xs font-medium text-gray-500 mb-2">대안 접근법</p>
+                    {s3.alternative_approaches.map((a: string, i: number) => (
+                      <p key={i} className="text-sm text-gray-700">• {a}</p>
+                    ))}
+                  </div>
+                )}
+                {s3.contraindications?.length > 0 && s3.contraindications[0] && (
+                  <div className="bg-red-50 rounded-xl p-4">
+                    <p className="text-xs font-medium text-red-600 mb-2">금기사항/주의</p>
+                    {s3.contraindications.map((c: string, i: number) => (
+                      <p key={i} className="text-sm text-red-700">⚠ {c}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
           )}
-          {s3.total_estimate && (
-            <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-              <span className="text-sm font-medium text-gray-800">총 추정 비용</span>
-              <span className="text-sm font-bold text-indigo-700">{s3.total_estimate}</span>
-            </div>
+
+          {/* Section 4: 임상 고려사항 */}
+          {s4 && (
+            <section>
+              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="block w-1 h-6 bg-indigo-500 rounded-full"></span>
+                <span className="text-indigo-600 font-black mr-0.5">04</span>
+                임상 고려사항
+              </h3>
+              <div className="bg-white rounded-xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+                {s4.risk_factors?.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">위험 요소</p>
+                    {s4.risk_factors.map((r: string, i: number) => (
+                      <div key={i} className="flex items-start gap-2 mb-1">
+                        <span className="mt-0.5 w-4 h-4 bg-amber-100 rounded flex items-center justify-center flex-shrink-0">
+                          <span className="text-amber-600 text-[10px]">!</span>
+                        </span>
+                        <span className="text-sm text-gray-700">{r}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {s4.expected_outcome && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-gray-500 mb-1">예상 결과</p>
+                    <p className="text-sm text-gray-700">{s4.expected_outcome}</p>
+                  </div>
+                )}
+                {s4.recovery_overview && (
+                  <div className="bg-green-50 rounded-lg p-3">
+                    <p className="text-xs font-medium text-green-600 mb-1">회복 개요</p>
+                    <p className="text-sm text-gray-700">{s4.recovery_overview}</p>
+                  </div>
+                )}
+              </div>
+            </section>
           )}
-          {s3.note && <p className="text-xs text-gray-500 mt-2">{s3.note}</p>}
-        </div>
-      )}
 
-      {/* Section 4: 일정 계획 */}
-      {s4 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-bold text-indigo-700 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center text-xs">4</span>
-            일정 계획
-          </h3>
-          <div className="text-sm space-y-2">
-            <div><span className="text-gray-500">환자 희망일:</span> <span className="font-medium">{s4.patient_preferred_date}</span></div>
-            {s4.hospitalization && (
-              <div><span className="text-gray-500">입원 기간:</span> <span className="font-medium">{s4.hospitalization}</span></div>
-            )}
-            {s4.pre_tests?.length > 0 && (
-              <div>
-                <span className="text-xs font-medium text-gray-500">사전 검사:</span>
-                <ul className="mt-1 space-y-1">
-                  {s4.pre_tests.map((t, i) => (
-                    <li key={i} className="text-gray-700">• {t}</li>
-                  ))}
-                </ul>
+          {/* Section 5: 진료 전 참고 */}
+          {s5 && (
+            <section>
+              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="block w-1 h-6 bg-indigo-500 rounded-full"></span>
+                <span className="text-indigo-600 font-black mr-0.5">05</span>
+                진료 전 참고
+              </h3>
+              <div className="bg-white rounded-xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+                {s5.recommended_tests?.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">추천 검사</p>
+                    <ul className="space-y-2">
+                      {s5.recommended_tests.map((t: string, i: number) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="mt-0.5 w-4 h-4 bg-green-100 rounded flex items-center justify-center flex-shrink-0">
+                            <span className="text-green-600 text-[10px]">+</span>
+                          </span>
+                          <span className="text-sm text-gray-700">{t}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {s5.patient_readiness && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-gray-500 mb-1">환자 준비도</p>
+                    <p className="text-sm text-gray-700">{s5.patient_readiness}</p>
+                  </div>
+                )}
+                {s5.doctor_notes && (
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+                    <p className="text-xs font-bold text-indigo-600 mb-1">의사 참고 메모</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{s5.doctor_notes}</p>
+                  </div>
+                )}
               </div>
-            )}
-            {s4.follow_up?.length > 0 && (
-              <div>
-                <span className="text-xs font-medium text-gray-500">후속 일정:</span>
-                <ul className="mt-1 space-y-1">
-                  {s4.follow_up.map((f, i) => (
-                    <li key={i} className="text-gray-700">• {f}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+            </section>
+          )}
         </div>
-      )}
 
-      {/* Section 5: 환자 준비도 */}
-      {s5 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-bold text-indigo-700 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center text-xs">5</span>
-            환자 준비도
-          </h3>
-          <div className="text-sm space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500">CTA:</span>
-              <span className={`font-medium ${
-                s5.cta_level === 'HOT' || s5.cta_level === 'hot' ? 'text-red-600' :
-                s5.cta_level === 'WARM' || s5.cta_level === 'warm' ? 'text-yellow-600' : 'text-blue-600'
-              }`}>{s5.cta_level?.toUpperCase()}</span>
-            </div>
-            {s5.decision_factors?.length > 0 && (
-              <div>
-                <span className="text-xs font-medium text-green-600">결정 요인</span>
-                {s5.decision_factors.map((f, i) => (
-                  <p key={i} className="text-gray-700 mt-0.5">+ {f}</p>
-                ))}
-              </div>
-            )}
-            {s5.barriers?.length > 0 && (
-              <div>
-                <span className="text-xs font-medium text-red-600">장벽</span>
-                {s5.barriers.map((b, i) => (
-                  <p key={i} className="text-gray-700 mt-0.5">- {b}</p>
-                ))}
-              </div>
-            )}
-            {s5.recommended_actions?.length > 0 && (
-              <div>
-                <span className="text-xs font-medium text-indigo-600">권장 조치</span>
-                {s5.recommended_actions.map((a, i) => (
-                  <p key={i} className="text-gray-700 mt-0.5">&rarr; {a}</p>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

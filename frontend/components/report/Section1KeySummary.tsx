@@ -1,15 +1,16 @@
 interface Section1KeySummaryProps {
   points: string[];
+  lang?: string;
 }
 
-export default function Section1KeySummary({ points }: Section1KeySummaryProps) {
+export default function Section1KeySummary({ points, lang = "ja" }: Section1KeySummaryProps) {
   const filtered = points.filter((p) => p && p.trim());
   if (filtered.length === 0) return null;
   return (
     <section>
       <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
         <span className="block w-1 h-6 bg-coral rounded-full"></span>
-        ご相談の要点
+        {lang === "ko" ? "상담 핵심 요약" : "ご相談の要点"}
       </h3>
       <div className="bg-white rounded-xl p-5 card-shadow">
         <ul className="space-y-3">

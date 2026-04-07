@@ -1,15 +1,16 @@
 interface Section5ScarInfoProps {
   points: string[];
+  lang?: string;
 }
 
-export default function Section5ScarInfo({ points }: Section5ScarInfoProps) {
+export default function Section5ScarInfo({ points, lang = "ja" }: Section5ScarInfoProps) {
   const filtered = points.filter((p) => p && p.trim());
   if (filtered.length === 0) return null;
   return (
     <section>
       <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
         <span className="block w-1 h-6 bg-coral rounded-full"></span>
-        傷跡について
+        {lang === "ko" ? "흉터 관련 안내" : "傷跡について"}
       </h3>
       <div className="bg-white rounded-xl p-5 card-shadow">
         <ul className="space-y-2">

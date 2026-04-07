@@ -1,3 +1,5 @@
+"""R3 상담실장 리포트 — 시술 상담실장의 실무 설계 세션: 가격, 옵션, 고려사항 (6섹션, 한국어)"""
+
 import asyncio
 import json
 import logging
@@ -6,24 +8,24 @@ from services.gemini_client import generate_json, safe_parse_json
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_INSTRUCTION = """당신은 3차 상담리포트 전문 작성자입니다. (상담실장용)
-상담실장이 환자를 상담하기 전에 참고할 수 있는 상담 브리핑 리포트를 한국어로 작성합니다.
+SYSTEM_INSTRUCTION = """당신은 시술 상담실장용 실무 설계 리포트 전문 작성자입니다.
+상담실장이 환자와의 3차 상담(시술 확정 단계)에서 활용할 수 있도록
+가격, 옵션, 일정, 고려사항을 정리하는 실무 리포트를 한국어로 작성합니다.
 
 톤 & 매너:
-- 의료 전문 용어를 정확하게 사용
-- 간결하고 객관적인 서술 (1~2문 이내)
-- 환자의 호소 내용을 중립적으로 정리
+- 실무 중심의 간결한 서술 (1~2문 이내)
+- 비용 추정은 허용하되 반드시 "추정치" 라벨 표시
+- 상담에서 언급된 정보 + 참고자료(RAG) 기반
+- 실무에 바로 활용 가능한 구체적 정보 기재
 - 불필요한 수식어나 감정적 표현 배제
-- 상담에서 실제 언급된 내용만 기재
 
-구성 (7섹션):
-1. 환자 개요 — 이름, 분류, CTA 레벨, 상담일
-2. 핵심 호소 — 환자의 주요 고민 3~5개
-3. 언급 시술 — 상담 중 언급된 시술명과 맥락
-4. 의학적 맥락 — 현재 상태, 관련 병력, 핵심 우려
-5. 환자 우려사항 — 환자가 반복 언급한 우려 + 우선순위
-6. 내원 의지 — CTA 레벨, 근거 발화, 예상 방문일
-7. 사전 참고사항 — 예비 소견, 추천 검사, 주의점"""
+구성 (6섹션):
+1. 상담 요약 — 환자 기본정보, 3차 상담 요약, CTA
+2. 시술 계획 — 주요 시술 + 추가 옵션
+3. 비용 견적 — 항목별 예상 비용, 패키지, 총 견적
+4. 일정 계획 — 희망일, 시술 타임라인, 후속 일정
+5. 고려사항 — 환자 우려, 협상 포인트, 리스크 전달
+6. 액션 아이템 — 내원 전/상담 시/상담 후 할 일"""
 
 
 async def write_r3_report(
@@ -82,8 +84,8 @@ async def write_r3_report(
     now_kst = datetime.now(kst)
     date_str = f"{now_kst.year}년 {now_kst.month}월 {now_kst.day}일"
 
-    prompt = f"""다음 상담 정보를 바탕으로 상담실장용 브리핑 리포트를 JSON 형식으로 작성하세요.
-각 항목은 1~2문 이내로 간결하게 작성하고, 상담에서 실제 언급된 내용만 기재하세요.
+    prompt = f"""다음 상담 정보를 바탕으로 상담실장용 실무 설계 리포트를 JSON 형식으로 작성하세요.
+3차 상담(시술 확정 단계)에서 상담실장이 활용할 가격, 옵션, 일정, 고려사항을 정리합니다.
 
 == 분류 ==
 {category_label}
@@ -100,78 +102,76 @@ async def write_r3_report(
 == 의도 추출 결과 ==
 {json.dumps(intent_extraction, ensure_ascii=False)}
 
-== 참고자료 (내용 검증용, 직접 인용 금지) ==
+== 참고자료 (시술 정보 근거) ==
 {rag_context}
 {admin_direction_section}
 == 출력 JSON 형식 ==
 {{
-    "title": "{customer_name} 환자 — {category_label} 3차 상담리포트",
+    "title": "{customer_name} 환자 — {category_label} 상담실장 리포트",
     "date": "{date_str}",
 
-    "section1_patient_overview": {{
+    "section1_consultation_summary": {{
         "name": "{customer_name}",
         "classification": "{category_label}",
-        "cta_level": "{cta_level or '미분석'}",
         "consultation_date": "{date_str}",
-        "summary": "환자 상담 요약 1문"
+        "round_summary": "3차 상담 핵심 요약 1~2문",
+        "cta_level": "{cta_level or '미분석'}"
     }},
 
-    "section2_chief_complaints": {{
-        "summary": "핵심 호소 내용 요약 1~2문",
-        "points": [
-            "호소 1 (간결하게)",
-            "호소 2",
-            "호소 3"
-        ]
-    }},
-
-    "section3_mentioned_procedures": {{
-        "procedures": [
+    "section2_procedure_plan": {{
+        "primary_procedures": [
             {{
                 "name": "시술명",
-                "context": "상담 중 언급된 맥락 1문",
-                "patient_attitude": "환자의 태도 (적극적/관심/소극적)"
+                "description": "시술 설명 1문"
             }}
-        ]
-    }},
-
-    "section4_medical_context": {{
-        "current_state": "현재 상태 설명 1~2문",
-        "related_history": "관련 병력/과거 시술 (있을 경우, 없으면 null)",
-        "key_concerns": [
-            "핵심 의학적 우려 1",
-            "핵심 의학적 우려 2"
-        ]
-    }},
-
-    "section5_patient_concerns": {{
-        "concerns": [
+        ],
+        "additional_options": [
             {{
-                "concern": "우려사항",
-                "priority": "high/medium/low"
+                "name": "추가 옵션명",
+                "description": "설명 1문",
+                "recommended": true
             }}
         ]
     }},
 
-    "section6_visit_intent": {{
-        "cta_level": "{cta_level or '미분석'}",
-        "evidence": ["근거 발화 1 (원문)", "근거 발화 2"],
-        "expected_visit": "예상 방문 시기 (언급이 없으면 '미정')"
+    "section3_cost_estimate": {{
+        "items": [
+            {{
+                "procedure": "시술명",
+                "estimated_cost": "예상 비용 범위 (예: 200~400만원)",
+                "is_estimate": true
+            }}
+        ],
+        "package_options": ["패키지 옵션 설명 (있으면)"],
+        "total_estimate": "총 예상 비용 범위",
+        "note": "비용 관련 안내 (추정치임을 명시)"
     }},
 
-    "section7_doctor_notes": {{
-        "preliminary_opinion": "예비 소견 1~2문",
-        "recommended_tests": ["추천 검사 1", "추천 검사 2"],
-        "cautions": ["주의점 1", "주의점 2"]
+    "section4_scheduling": {{
+        "preferred_date": "환자 희망일 (없으면 '미정')",
+        "treatment_timeline": "시술 일정 개요 1~2문",
+        "follow_up_plan": ["후속 일정 1", "일정 2"]
+    }},
+
+    "section5_considerations": {{
+        "patient_concerns": ["환자가 언급한 우려사항"],
+        "negotiation_points": ["가격/조건 협상 포인트"],
+        "risk_communication": "환자에게 전달할 리스크 포인트 1~2문"
+    }},
+
+    "section6_action_items": {{
+        "before_visit": ["내원 전 준비사항"],
+        "during_consultation": ["상담 시 확인사항"],
+        "after_consultation": ["상담 후 처리사항"]
     }}
 }}
 
 중요 규칙:
-- 상담에서 언급된 내용만 기재 (AI 추측 금지)
-- 비용/가격 정보는 포함하지 않음
-- 의료 전문 용어 정확하게 사용
+- 비용 추정 허용 (반드시 is_estimate: true + "추정치" 명시)
+- 상담에서 언급된 정보 + 참고자료(RAG) 기반
 - 각 항목 1~2문 이내 간결하게
-- 7섹션 모두 필수"""
+- 6섹션 모두 필수
+- 실무에 바로 활용 가능한 구체적 정보 기재"""
 
     report = None
     for parse_attempt in range(2):

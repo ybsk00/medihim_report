@@ -156,6 +156,20 @@ async def get_report_status(
                         "ko": f"{embed_base}/doctor/ko/{token}",
                     }
                 }
+            elif r["report_type"] == "r1":
+                result["pre_consultation_report"] = {
+                    "report_token": token,
+                    "embed_url": {
+                        "ko": f"{embed_base}/doctor/ko/{token}",
+                    }
+                }
+            elif r["report_type"] == "r2":
+                result["medical_report"] = {
+                    "report_token": token,
+                    "embed_url": {
+                        "ko": f"{embed_base}/doctor/ko/{token}",
+                    }
+                }
 
     if c.get("error_message"):
         result["error_message"] = c["error_message"]

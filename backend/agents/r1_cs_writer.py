@@ -1,4 +1,5 @@
-# [비활성화] 1차 상담리포트 - 사전상담 CS용. 추후 활성화 예정
+"""R1 사전상담 리포트 — 상담실장이 본 상담 전 참고하는 고객 정보 + 니즈 요약 (4섹션, 한국어)"""
+
 import asyncio
 import json
 import logging
@@ -7,19 +8,21 @@ from services.gemini_client import generate_json, safe_parse_json
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_INSTRUCTION = """당신은 1차 상담리포트 전문 작성자입니다. (CS 사전상담용)
-CS 담당자가 고객과의 사전 상담 내용을 간결하게 요약하는 리포트를 한국어로 작성합니다.
+SYSTEM_INSTRUCTION = """당신은 사전상담 리포트 전문 작성자입니다.
+상담실장이 본 상담에 들어가기 전, 고객이 누구이고 무엇을 원하는지 빠르게 파악할 수 있도록
+사전상담 내용을 4섹션으로 정리합니다.
 
 톤 & 매너:
-- 간결하고 명확한 서술
-- 고객의 요청과 상담 내용을 객관적으로 정리
-- 각 항목 1~2문 이내
-- 상담에서 실제 언급된 내용만 기재
+- 간결하고 객관적인 서술 (1~2문 이내)
+- 고객의 요청과 상태를 중립적으로 정리
+- 상담에서 실제 언급된 내용만 기재 (AI 추측 금지)
+- 불필요한 수식어나 감정적 표현 배제
 
-구성 (3섹션):
-1. 상담 개요 — 고객명, 상담일, 분류, 상담 요약
-2. 고객 요구사항 — 핵심 고민, 희망 시술, 기대사항
-3. 후속 조치 — 다음 단계 안내, 추가 확인 필요사항"""
+구성 (4섹션):
+1. 고객 프로필 — 기본 정보 + 상담 경위
+2. 고객 니즈 — 핵심 고민, 희망 결과, 언급 시술, 긴급도
+3. 상담 맥락 — 현재 상태, 고객 질문, 감정/태도
+4. 사전 준비사항 — 다음 상담 추천 주제, 추가 확인, 참고사항"""
 
 
 async def write_r1_report(
@@ -29,6 +32,7 @@ async def write_r1_report(
     classification: str,
     customer_name: str,
     input_lang: str = "ja",
+    admin_direction: str | None = None,
 ) -> dict:
     category_label = "성형외과" if classification == "plastic_surgery" else "피부과"
 
@@ -38,11 +42,18 @@ async def write_r1_report(
     else:
         consultation_section = f"== 상담 원문 (일본어) ==\n{original_text}\n\n== 한국어 번역 ==\n{translated_text}"
 
+    admin_direction_section = ""
+    if admin_direction:
+        admin_direction_section = f"""
+== 관리자 수정 지시 (최우선 반영) ==
+{admin_direction}
+"""
+
     kst = timezone(timedelta(hours=9))
     now_kst = datetime.now(kst)
     date_str = f"{now_kst.year}년 {now_kst.month}월 {now_kst.day}일"
 
-    prompt = f"""다음 상담 정보를 바탕으로 CS 사전상담 요약 리포트를 JSON 형식으로 작성하세요.
+    prompt = f"""다음 사전상담 정보를 바탕으로, 상담실장이 본 상담 전 참고할 수 있는 사전상담 리포트를 JSON 형식으로 작성하세요.
 각 항목은 1~2문 이내로 간결하게 작성하세요.
 
 == 분류 ==
@@ -58,35 +69,44 @@ async def write_r1_report(
 
 == 의도 추출 결과 ==
 {json.dumps(intent_extraction, ensure_ascii=False)}
-
+{admin_direction_section}
 == 출력 JSON 형식 ==
 {{
-    "title": "{customer_name} 고객 — {category_label} 1차 상담리포트",
+    "title": "{customer_name} 고객 — {category_label} 사전상담 리포트",
     "date": "{date_str}",
 
-    "section1_consultation_overview": {{
+    "section1_customer_profile": {{
         "name": "{customer_name}",
-        "classification": "{category_label}",
         "consultation_date": "{date_str}",
-        "summary": "상담 내용 요약 2~3문"
+        "classification": "{category_label}",
+        "summary": "상담 경위/배경 요약 1~2문"
     }},
 
     "section2_customer_needs": {{
         "main_concerns": ["핵심 고민 1", "핵심 고민 2"],
-        "desired_procedures": ["희망 시술 1"],
-        "expectations": "고객 기대사항 1~2문"
+        "desired_outcome": "고객이 원하는 최종 결과 1~2문",
+        "mentioned_procedures": ["고객이 언급한 시술명"],
+        "urgency": "급함/보통/여유 (내원 시기 관련 언급 기반, 없으면 '미정')"
     }},
 
-    "section3_follow_up": {{
-        "next_steps": ["다음 단계 1", "다음 단계 2"],
-        "additional_checks": ["추가 확인 필요사항 1"]
+    "section3_consultation_context": {{
+        "current_state": "현재 상태/과거 시술 이력 1~2문 (언급 없으면 '정보 없음')",
+        "key_questions": ["고객이 질문한 내용 1", "질문 2"],
+        "emotional_tone": "고객의 태도/감정 상태 1문 (불안, 적극적, 탐색적 등)"
+    }},
+
+    "section4_next_steps": {{
+        "recommended_topics": ["다음 상담에서 다뤄야 할 주제 1", "주제 2"],
+        "additional_checks": ["추가 확인 필요사항 1"],
+        "notes": "특이사항/참고사항 1~2문 (없으면 null)"
     }}
 }}
 
 중요 규칙:
-- 상담에서 언급된 내용만 기재
+- 상담에서 언급된 내용만 기재 (AI 추측 금지)
 - 각 항목 1~2문 이내 간결하게
-- 3섹션 모두 필수"""
+- 4섹션 모두 필수
+- 비용/가격 정보는 포함하지 않음"""
 
     report = None
     for parse_attempt in range(2):

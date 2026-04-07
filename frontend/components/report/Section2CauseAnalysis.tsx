@@ -2,14 +2,15 @@ interface Section2CauseAnalysisProps {
   intro: string;
   causes: string[];
   conclusion: string;
+  lang?: string;
 }
 
-export default function Section2CauseAnalysis({ intro, causes, conclusion }: Section2CauseAnalysisProps) {
+export default function Section2CauseAnalysis({ intro, causes, conclusion, lang = "ja" }: Section2CauseAnalysisProps) {
   return (
     <section>
       <h3 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
         <span className="block w-1 h-6 bg-coral rounded-full"></span>
-        現在の状態と原因
+        {lang === "ko" ? "현재 상태 및 원인 분석" : "現在の状態と原因"}
       </h3>
       <div className="bg-white rounded-xl p-5 card-shadow">
         <p className="text-sm text-text-dark leading-relaxed mb-4">{intro}</p>

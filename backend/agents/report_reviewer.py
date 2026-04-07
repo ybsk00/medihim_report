@@ -20,77 +20,77 @@ R4_SYSTEM_INSTRUCTION = """あなたはリポートの品質管理レビュア�
 8. 日本語の文法・表現は自然か？
 9. hospital_comparisonがある場合: 相談で実際に言及された病院のみが記載されているか？ AIが創作した病院名・費用・回復期間が含まれていないか？（創作情報は即Fail）"""
 
-# R1 CS 사전상담용 (한국어) [비활성화]
-R1_SYSTEM_INSTRUCTION = """당신은 CS 사전상담 리포트의 품질 관리 리뷰어입니다.
+# R1 사전상담용 (한국어, 4섹션)
+R1_SYSTEM_INSTRUCTION = """당신은 사전상담 리포트의 품질 관리 리뷰어입니다.
 생성된 R1 리포트를 엄격하게 리뷰하세요.
 
 리뷰 기준:
-1. 3섹션 모두 존재하는가? (section1_consultation_overview, section2_customer_needs, section3_follow_up)
+1. 4섹션 모두 존재하는가? (section1_customer_profile, section2_customer_needs, section3_consultation_context, section4_next_steps)
 2. 상담에서 언급된 내용만 기재되었는가? (AI 추측 금지)
 3. 각 항목이 1~2문 이내로 간결한가?
-4. 한국어 문법과 표현이 자연스러운가?"""
+4. 한국어 문법과 표현이 자연스러운가?
+5. 비용/가격 정보가 포함되지 않았는가?"""
 
-# R2 의료진용 (한국어) [비활성화]
-R2_SYSTEM_INSTRUCTION = """당신은 의료진용 2차 상담리포트의 품질 관리 리뷰어입니다.
+# R2 의사용 (한국어, 5섹션)
+R2_SYSTEM_INSTRUCTION = """당신은 의사용 상담리포트의 품질 관리 리뷰어입니다.
 생성된 R2 리포트를 엄격하게 리뷰하세요.
 
 리뷰 기준:
-1. 5섹션 모두 존재하는가? (section1~section5)
-2. 리소스 목록이 현실적인가?
-3. 비용 범위가 합리적인가?
-4. 비용 추정치에 "추정치" 라벨이 표시되었는가?
-5. R3 상담실장 소견과 모순되지 않는가?
-6. 각 항목이 1~2문 이내로 간결한가?
-7. 한국어 문법과 표현이 자연스러운가?"""
+1. 5섹션 모두 존재하는가? (section1_patient_summary, section2_medical_assessment, section3_treatment_options, section4_clinical_considerations, section5_pre_consultation_notes)
+2. 의료 전문 용어가 정확하게 사용되었는가?
+3. 진단이 아닌 '소견' 수준으로 기재되었는가?
+4. 상담 내용 + 참고자료 기반인가? (근거 없는 AI 추측 금지)
+5. 각 항목이 1~2문 이내로 간결한가?
+6. 한국어 문법과 표현이 자연스러운가?
+7. 비용 정보가 포함되지 않았는가?"""
 
-# R3 상담실장용 (한국어) [활성화]
-R3_SYSTEM_INSTRUCTION = """당신은 상담실장용 3차 상담리포트의 품질 관리 리뷰어입니다.
+# R3 상담실장용 (한국어, 6섹션 — 가격/옵션/고려사항)
+R3_SYSTEM_INSTRUCTION = """당신은 상담실장용 실무 설계 리포트의 품질 관리 리뷰어입니다.
 생성된 R3 리포트를 엄격하게 리뷰하세요.
 
 리뷰 기준:
-1. 7섹션 모두 존재하는가? (section1~section7)
-2. 의료 전문 용어가 정확하게 사용되었는가?
-3. CTA 레벨과 내원 의지 정보가 포함되었는가?
-4. 상담에서 언급된 내용만 기재되었는가? (AI 추측 금지)
-5. 각 항목이 1~2문 이내로 간결한가?
-6. 한국어 문법과 표현이 자연스러운가?
-7. 비용/가격 정보가 포함되지 않았는가?"""
+1. 6섹션 모두 존재하는가? (section1_consultation_summary, section2_procedure_plan, section3_cost_estimate, section4_scheduling, section5_considerations, section6_action_items)
+2. 비용 추정치에 is_estimate: true가 표시되었는가?
+3. 시술 계획과 비용 견적이 상담 내용/참고자료에 기반하는가?
+4. 각 항목이 1~2문 이내로 간결한가?
+5. 한국어 문법과 표현이 자연스러운가?
+6. 액션 아이템이 구체적이고 실무 활용 가능한가?"""
 
 
 def _get_review_config(report_type: str) -> tuple[str, str]:
     """리포트 타입별 시스템 인스트럭션과 리뷰 프롬프트 반환"""
     if report_type == "r1":
-        return R1_SYSTEM_INSTRUCTION, """== 리뷰 항목 (4항목) ==
-1. 3섹션 존재 확인 (section1_consultation_overview, section2_customer_needs, section3_follow_up)
+        return R1_SYSTEM_INSTRUCTION, """== 리뷰 항목 (5항목) ==
+1. 4섹션 존재 확인 (section1_customer_profile, section2_customer_needs, section3_consultation_context, section4_next_steps)
 2. 상담 내용 기반 여부 (AI 추측 포함 시 Fail)
 3. 간결성: 각 항목 1~2문 이내
 4. 한국어 자연스러움
+5. 비용/가격 정보 미포함 확인
 
 JSON 형식으로 반환:
 {{"passed": true/false, "score": 0~100, "issues": ["문제점1"], "suggestions": ["개선안1"], "feedback": "리포트 작성 에이전트에게 전달할 피드백"}}"""
 
     elif report_type == "r2":
         return R2_SYSTEM_INSTRUCTION, """== 리뷰 항목 (7항목) ==
-1. 5섹션 존재 확인 (section1_procedure_summary, section2_resource_requirements, section3_cost_planning, section4_scheduling, section5_patient_readiness)
-2. 리소스 목록 현실성
-3. 비용 범위 합리성
-4. "추정치" 라벨 표시 확인 (is_estimate: true)
-5. R3 상담실장 소견과의 일관성
-6. 간결성: 각 항목 1~2문 이내
-7. 한국어 자연스러움
+1. 5섹션 존재 확인 (section1_patient_summary, section2_medical_assessment, section3_treatment_options, section4_clinical_considerations, section5_pre_consultation_notes)
+2. 의료 전문 용어 정확성
+3. 진단이 아닌 '소견' 수준 기재 여부
+4. 상담 내용 + 참고자료 기반 여부 (근거 없는 추측 포함 시 Fail)
+5. 간결성: 각 항목 1~2문 이내
+6. 한국어 자연스러움
+7. 비용 정보 미포함 확인
 
 JSON 형식으로 반환:
 {{"passed": true/false, "score": 0~100, "issues": ["문제점1"], "suggestions": ["개선안1"], "feedback": "리포트 작성 에이전트에게 전달할 피드백"}}"""
 
     elif report_type == "r3":
-        return R3_SYSTEM_INSTRUCTION, """== 리뷰 항목 (7항목) ==
-1. 7섹션 존재 확인 (section1_patient_overview, section2_chief_complaints, section3_mentioned_procedures, section4_medical_context, section5_patient_concerns, section6_visit_intent, section7_doctor_notes)
-2. 의료 전문 용어 정확성
-3. CTA 레벨 및 내원 의지 정보 포함 여부
-4. 상담 내용 기반 여부 (AI 추측 포함 시 Fail)
-5. 간결성: 각 항목 1~2문 이내
-6. 한국어 자연스러움
-7. 비용/가격 정보 미포함 확인
+        return R3_SYSTEM_INSTRUCTION, """== 리뷰 항목 (6항목) ==
+1. 6섹션 존재 확인 (section1_consultation_summary, section2_procedure_plan, section3_cost_estimate, section4_scheduling, section5_considerations, section6_action_items)
+2. 비용 추정치 is_estimate: true 표시 확인
+3. 시술 계획과 비용이 상담/참고자료에 기반하는가
+4. 간결성: 각 항목 1~2문 이내
+5. 한국어 자연스러움
+6. 액션 아이템 구체성 및 실무 활용 가능성
 
 JSON 형식으로 반환:
 {{"passed": true/false, "score": 0~100, "issues": ["문제점1"], "suggestions": ["개선안1"], "feedback": "리포트 작성 에이전트에게 전달할 피드백"}}"""

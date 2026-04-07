@@ -4,10 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { use } from "react";
 import { reportAPI, isV3Report, type Report, type ReportData, type R3ReportData } from "@/lib/api";
+import R1CSReport from "@/components/report-internal/R1CSReport";
+import R2DirectorReport from "@/components/report-internal/R2DirectorReport";
 import R3DirectorReport from "@/components/report-internal/R3DirectorReport";
-// [R1-R2 비활성화] 추후 활성화 예정
-// import R1CSReport from "@/components/report-internal/R1CSReport";
-// import R2DirectorReport from "@/components/report-internal/R2DirectorReport";
 
 export default function ReportDetailPage({
   params,
@@ -153,7 +152,9 @@ export default function ReportDetailPage({
   const consultation = report.consultations;
   const customerName = consultation?.customer_name || "고객";
   const customerEmail = consultation?.customer_email || "";
-  const isR3 = report.report_type === "r3";
+  const reportType = report.report_type || "r4";
+  const isR3 = reportType === "r3";
+  const isInternalReport = reportType === "r1" || reportType === "r2" || reportType === "r3";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reportData: any = lang === "ko" && report.report_data_ko
@@ -174,9 +175,14 @@ export default function ReportDetailPage({
         <h2 className="text-xl font-bold text-slate-800">
           {customerName} 리포트 검토
           <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            isR3 ? "bg-purple-100 text-purple-800" : "bg-coral/10 text-coral"
+            reportType === "r1" ? "bg-blue-100 text-blue-700" :
+            reportType === "r2" ? "bg-indigo-100 text-indigo-800" :
+            reportType === "r3" ? "bg-purple-100 text-purple-800" :
+            "bg-coral/10 text-coral"
           }`}>
-            {isR3 ? "상담실장" : "👤 환자용"}
+            {reportType === "r1" ? "1차 사전상담" :
+             reportType === "r2" ? "2차 의사용" :
+             reportType === "r3" ? "3차 상담실장" : "👤 환자용"}
           </span>
         </h2>
       </header>
@@ -184,8 +190,8 @@ export default function ReportDetailPage({
       <div className="p-8 max-w-[1200px] mx-auto w-full space-y-6">
         {reportData && (
           <>
-            {/* Language Toggle — R3은 한국어 전용이므로 숨김 */}
-            {!isR3 && (
+            {/* Language Toggle — 내부 리포트(R1/R2/R3)는 한국어 전용이므로 숨김 */}
+            {!isInternalReport && (
               <div className="flex items-center justify-between">
                 <div className="flex bg-slate-100 rounded-lg p-0.5">
                   <button
@@ -218,11 +224,25 @@ export default function ReportDetailPage({
             )}
 
             {/* Report Preview */}
-            {isR3 ? (
+            {reportType === "r1" ? (
+              /* R1 사전상담 리포트 (한국어, 블루 테마) */
+              <div className="bg-white rounded-xl border border-blue-200 shadow-sm p-8">
+                <div className="mx-auto" style={{ maxWidth: "640px" }}>
+                  <R1CSReport data={reportData} />
+                </div>
+              </div>
+            ) : reportType === "r2" ? (
+              /* R2 의사용 리포트 (한국어, 인디고 테마) */
+              <div className="bg-white rounded-xl border border-indigo-200 shadow-sm p-8">
+                <div className="mx-auto" style={{ maxWidth: "640px" }}>
+                  <R2DirectorReport data={reportData} />
+                </div>
+              </div>
+            ) : isR3 ? (
               /* R3 상담실장 리포트 (한국어, 보라색 테마) */
               <div className="bg-white rounded-xl border border-purple-200 shadow-sm p-8">
                 <div className="mx-auto" style={{ maxWidth: "640px" }}>
-                  <R3DirectorReport data={reportData as R3ReportData} />
+                  <R3DirectorReport data={reportData} />
                 </div>
               </div>
             ) : (

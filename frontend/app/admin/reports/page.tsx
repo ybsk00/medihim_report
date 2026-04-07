@@ -17,8 +17,8 @@ const CLASSIFICATION_MAP: Record<string, string> = {
 };
 
 const REPORT_TYPE_BADGE: Record<string, { label: string; color: string }> = {
-  r1: { label: "1차 사전상담", color: "bg-gray-100 text-gray-600" },
-  r2: { label: "2차 의료진", color: "bg-indigo-100 text-indigo-800" },
+  r1: { label: "1차 사전상담", color: "bg-blue-100 text-blue-700" },
+  r2: { label: "2차 의사용", color: "bg-indigo-100 text-indigo-800" },
   r3: { label: "3차 상담실장", color: "bg-purple-100 text-purple-800" },
   r4: { label: "👤 환자용", color: "bg-coral/10 text-coral" },
 };
@@ -171,7 +171,28 @@ export default function ReportsPage() {
       </header>
 
       <div className="p-8 max-w-[1400px] mx-auto w-full space-y-6">
-        {/* [R1-R3 비활성화] 리포트 타입 필터 탭 숨김 */}
+        {/* 리포트 타입 필터 */}
+        <div className="flex gap-2 flex-wrap">
+          {[
+            { key: "all", label: "전체" },
+            { key: "r1", label: "1차 사전상담" },
+            { key: "r2", label: "2차 의사용" },
+            { key: "r3", label: "3차 상담실장" },
+            { key: "r4", label: "환자용" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setTypeFilter(tab.key)}
+              className={`px-4 py-2 text-sm rounded-lg font-medium transition-colors ${
+                typeFilter === tab.key
+                  ? "bg-slate-800 text-white"
+                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {loading && reports.length === 0 ? (

@@ -12,8 +12,10 @@ import Section7Risks from "@/components/report/Section7Risks";
 import Section8VisitDate from "@/components/report/Section8VisitDate";
 import Section9IppeoMessage from "@/components/report/Section9IppeoMessage";
 import ReportFooter from "@/components/report/ReportFooter";
+import R1CSReport from "@/components/report-internal/R1CSReport";
+import R2DirectorReport from "@/components/report-internal/R2DirectorReport";
 import R3DirectorReport from "@/components/report-internal/R3DirectorReport";
-import { type ReportData, type R3ReportData, isV3Report } from "@/lib/api";
+import { type ReportData, isV3Report } from "@/lib/api";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "/api";
@@ -162,11 +164,29 @@ export default function EmbedClient({
     );
   }
 
+  // R1 사전상담 리포트 렌더링
+  if (reportType === "r1") {
+    return (
+      <div ref={containerRef} className="font-[Pretendard,Noto_Sans_KR,sans-serif]">
+        <R1CSReport data={report} />
+      </div>
+    );
+  }
+
+  // R2 의사용 리포트 렌더링
+  if (reportType === "r2") {
+    return (
+      <div ref={containerRef} className="font-[Pretendard,Noto_Sans_KR,sans-serif]">
+        <R2DirectorReport data={report} />
+      </div>
+    );
+  }
+
   // R3 상담실장 리포트 렌더링 (자체 헤더/푸터 포함)
   if (reportType === "r3") {
     return (
       <div ref={containerRef} className="font-[Pretendard,Noto_Sans_KR,sans-serif]">
-        <R3DirectorReport data={report as R3ReportData} />
+        <R3DirectorReport data={report} />
       </div>
     );
   }
