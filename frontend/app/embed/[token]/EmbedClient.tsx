@@ -32,6 +32,7 @@ export default function EmbedClient({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [report, setReport] = useState<any>(null);
   const [reportType, setReportType] = useState<string>("r4");
+  const [consultationRound, setConsultationRound] = useState<number>(3);
   const [currentLang, setCurrentLang] = useState(lang);
   const containerRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
@@ -60,6 +61,7 @@ export default function EmbedClient({
       const data = await res.json();
       setReport(data.report_data);
       setReportType(data.report_type || "r4");
+      setConsultationRound(data.consultation_round || 3);
       setError(null);
       postToParent("REPORT_LOADED", {
         token,
@@ -186,7 +188,7 @@ export default function EmbedClient({
   if (reportType === "r3") {
     return (
       <div ref={containerRef} className="font-[Pretendard,Noto_Sans_KR,sans-serif]">
-        <R3DirectorReport data={report} />
+        <R3DirectorReport data={report} round={consultationRound} />
       </div>
     );
   }

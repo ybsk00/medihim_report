@@ -4,6 +4,7 @@
 
 interface Props {
   data: any;
+  round?: number;
 }
 
 function SectionTitle({ number, title }: { number: number; title: string }) {
@@ -24,7 +25,9 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
   );
 }
 
-export default function R3DirectorReport({ data }: Props) {
+export default function R3DirectorReport({ data, round = 3 }: Props) {
+  const roundLabel = `${round}차`;
+  const roleLabel = round === 2 ? "의사" : "상담실장";
   const s1 = data.section1_consultation_summary || data.section1_patient_overview;
   const s2 = data.section2_procedure_plan || data.section2_chief_complaints;
   const s3 = data.section3_cost_estimate || data.section3_mentioned_procedures;
@@ -57,10 +60,10 @@ export default function R3DirectorReport({ data }: Props) {
           <div className="flex items-center justify-center gap-2 mb-4">
             <img src="/ippeo-logo.png" alt="IPPEO" className="w-5 h-5 rounded" />
             <h1 className="text-xs font-bold text-gray-500 tracking-tight">
-              IPPEO | 3차 상담리포트
+              IPPEO | {roundLabel} 상담리포트
             </h1>
             <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-              상담실장
+              {roleLabel}
             </span>
           </div>
           <div className="text-center">

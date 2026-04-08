@@ -73,7 +73,7 @@ async def get_embed_report(token: str, lang: str = "ja"):
 
     report = (
         db.table("reports")
-        .select("id, report_data, report_data_ko, report_type, access_expires_at, status, consultations(customer_name)")
+        .select("id, report_data, report_data_ko, report_type, access_expires_at, status, consultations(customer_name, consultation_round)")
         .eq("access_token", token)
         .single()
         .execute()
@@ -95,9 +95,11 @@ async def get_embed_report(token: str, lang: str = "ja"):
     now = datetime.now(timezone.utc).isoformat()
     db.table("reports").update({"email_opened_at": now}).eq("access_token", token).is_("email_opened_at", "null").execute()
 
+    consultation = report.data["consultations"]
     return {
         "report_data": report_data,
         "report_type": report.data.get("report_type", "r4"),
-        "customer_name": report.data["consultations"]["customer_name"],
+        "customer_name": consultation["customer_name"],
+        "consultation_round": consultation.get("consultation_round") or 3,
         "lang": lang,
     }
