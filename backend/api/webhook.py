@@ -1,4 +1,4 @@
-"""이뽀 앱 → AI 서버 Webhook 수신 API (v1.1 스펙)"""
+"""이뻐 앱 → AI 서버 Webhook 수신 API (v1.1 스펙)"""
 
 import logging
 
@@ -63,7 +63,7 @@ async def receive_consultation(
     _auth=Depends(verify_webhook),
 ):
     """
-    이뽀 앱에서 상담 STT 데이터 수신.
+    이뻐 앱에서 상담 STT 데이터 수신.
     즉시 consultation_id를 반환하고, 백그라운드에서 R3(상담실장용) + R4(환자용) 리포트 자동 생성.
     """
     logger.info(
@@ -107,7 +107,7 @@ async def get_report_status(
     consultation_id: str,
     _auth=Depends(verify_api_key),
 ):
-    """상담 처리 상태 + embed URL 조회 (이뽀 앱에서 폴링)"""
+    """상담 처리 상태 + embed URL 조회 (이뻐 앱에서 폴링)"""
     db = get_supabase()
 
     consultation = (

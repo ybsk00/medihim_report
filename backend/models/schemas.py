@@ -122,10 +122,10 @@ class DashboardStats(BaseModel):
 
 
 # ============================================
-# 이뽀 앱 연동 Models
+# 이뻐 앱 연동 Models
 # ============================================
 class IppeoConsultationRequest(BaseModel):
-    """이뽀 → 우리: 상담 STT 데이터 전송"""
+    """이뻐 → 우리: 상담 STT 데이터 전송"""
     customer_name: str
     customer_email: Optional[str] = ""
     stt_text: Optional[str] = ""  # STT 원문 텍스트 (직접 전달)
@@ -134,6 +134,6 @@ class IppeoConsultationRequest(BaseModel):
     hospital_name: Optional[str] = ""
     doctor_name: Optional[str] = ""
     concern_area: Optional[str] = ""
-    # 이뽀 측 ID (콜백 시 그대로 돌려줌)
+    # 이뻐 측 ID (콜백 시 그대로 돌려줌)
     ippeo_user_id: Optional[str] = ""
     ippeo_consultation_id: Optional[str] = ""

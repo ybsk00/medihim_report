@@ -98,7 +98,7 @@ async def _check_api_endpoints() -> dict:
 
 
 async def _check_webhook() -> dict:
-    """이뽀 웹훅 DEV/PROD 통신 테스트"""
+    """이뻐 웹훅 DEV/PROD 통신 테스트"""
     results = {}
 
     test_payload = {
@@ -379,10 +379,10 @@ def _build_health_email(checks: dict, now_kst: datetime) -> str:
     <div style="margin-bottom:28px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
         <span style="font-size:18px;">&#128279;</span>
-        <h3 style="margin:0;font-size:16px;color:#1e293b;font-weight:700;">이뽀앱 웹훅 통신</h3>
+        <h3 style="margin:0;font-size:16px;color:#1e293b;font-weight:700;">이뻐앱 웹훅 통신</h3>
         {_status_badge(wh.get('status', 'ERROR'))}
       </div>
-      <p style="margin:0 0 12px;font-size:12px;color:#94a3b8;">이뽀 앱과의 실시간 리포트 전송 연동 (HMAC 서명 + API Key 인증)</p>
+      <p style="margin:0 0 12px;font-size:12px;color:#94a3b8;">이뻐 앱과의 실시간 리포트 전송 연동 (HMAC 서명 + API Key 인증)</p>
       <div style="background:#f8fafc;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;">
         <table style="width:100%;border-collapse:collapse;">
           <tr style="background:#f1f5f9;">

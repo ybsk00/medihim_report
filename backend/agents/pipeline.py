@@ -416,7 +416,7 @@ async def run_pipeline(consultation_id: str):
                 "status": "report_ready",
                 "error_message": f"[폴백] {str(e)}",
             })
-            # 폴백이라도 이뽀에 콜백 전송
+            # 폴백이라도 이뻐에 콜백 전송
             try:
                 await notify_report_ready(consultation_id)
             except Exception as cb_err:
@@ -613,11 +613,11 @@ async def _generate_all_reports(
     )
 
     # ========================================
-    # Step 8: consultation status 업데이트 + 이뽀 콜백
+    # Step 8: consultation status 업데이트 + 이뻐 콜백
     # ========================================
     await _update_consultation(consultation_id, {"status": "report_ready"})
 
-    # 이뽀 앱에 report_ready 콜백 전송
+    # 이뻐 앱에 report_ready 콜백 전송
     try:
         await notify_report_ready(consultation_id)
     except Exception as cb_err:

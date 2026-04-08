@@ -42,7 +42,7 @@ app.add_middleware(
         "https://ipp0-medhim.firebaseapp.com",
         "https://ippeo-medhim.web.app",
         "https://ippeo-medhim.firebaseapp.com",
-        # 이뽀 앱 도메인
+        # 이뻐 앱 도메인
         "https://www.ippeo.io",
         "https://dev.ippeo.io",
     ],

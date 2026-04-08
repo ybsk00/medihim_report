@@ -95,7 +95,7 @@ async def get_embed_report(token: str, lang: str = "ja"):
     now = datetime.now(timezone.utc).isoformat()
     db.table("reports").update({"email_opened_at": now}).eq("access_token", token).is_("email_opened_at", "null").execute()
 
-    consultation = report.data["consultations"]
+    consultation = report.data.get("consultations") or {}
     return {
         "report_data": report_data,
         "report_type": report.data.get("report_type", "r4"),

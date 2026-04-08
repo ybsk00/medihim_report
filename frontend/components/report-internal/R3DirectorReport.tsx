@@ -117,7 +117,7 @@ export default function R3DirectorReport({ data, round = 3 }: Props) {
           {s2 && isNewFormat && (
             <section>
               <SectionTitle number={2} title="시술 계획" />
-              {s2.primary_procedures?.length > 0 && (
+              {Array.isArray(s2.primary_procedures) && s2.primary_procedures.length > 0 && (
                 <div className="space-y-3 mb-4">
                   {s2.primary_procedures.map((proc: any, i: number) => (
                     <Card key={i} className="border-l-4 border-purple-300">
@@ -127,7 +127,7 @@ export default function R3DirectorReport({ data, round = 3 }: Props) {
                   ))}
                 </div>
               )}
-              {s2.additional_options?.length > 0 && (
+              {Array.isArray(s2.additional_options) && s2.additional_options.length > 0 && (
                 <div>
                   <p className="text-xs font-bold text-gray-500 mb-2 px-1 uppercase tracking-wider">추가 옵션</p>
                   <div className="space-y-2">
@@ -153,7 +153,7 @@ export default function R3DirectorReport({ data, round = 3 }: Props) {
             <section>
               <SectionTitle number={3} title="비용 견적" />
               <Card>
-                {s3.items?.length > 0 && (
+                {Array.isArray(s3.items) && s3.items.length > 0 && (
                   <div className="space-y-2 mb-4">
                     {s3.items.map((item: any, i: number) => (
                       <div key={i} className="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
@@ -168,7 +168,7 @@ export default function R3DirectorReport({ data, round = 3 }: Props) {
                     ))}
                   </div>
                 )}
-                {s3.package_options?.length > 0 && s3.package_options[0] && (
+                {Array.isArray(s3.package_options) && s3.package_options.length > 0 && s3.package_options[0] && (
                   <div className="mb-4">
                     <p className="text-xs font-medium text-gray-500 mb-2">패키지 옵션</p>
                     {s3.package_options.map((p: string, i: number) => (
@@ -203,7 +203,7 @@ export default function R3DirectorReport({ data, round = 3 }: Props) {
                       <span className="font-medium">{s4.treatment_timeline}</span>
                     </div>
                   )}
-                  {s4.follow_up_plan?.length > 0 && (
+                  {Array.isArray(s4.follow_up_plan) && s4.follow_up_plan.length > 0 && (
                     <div>
                       <p className="text-xs font-medium text-gray-500 mb-1">후속 일정</p>
                       <ul className="space-y-1">
@@ -223,7 +223,7 @@ export default function R3DirectorReport({ data, round = 3 }: Props) {
             <section>
               <SectionTitle number={5} title="고려사항" />
               <Card>
-                {s5.patient_concerns?.length > 0 && (
+                {Array.isArray(s5.patient_concerns) && s5.patient_concerns.length > 0 && (
                   <div className="mb-4">
                     <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">환자 우려</p>
                     {s5.patient_concerns.map((c: string, i: number) => (
@@ -236,7 +236,7 @@ export default function R3DirectorReport({ data, round = 3 }: Props) {
                     ))}
                   </div>
                 )}
-                {s5.negotiation_points?.length > 0 && (
+                {Array.isArray(s5.negotiation_points) && s5.negotiation_points.length > 0 && (
                   <div className="mb-4">
                     <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">협상 포인트</p>
                     {s5.negotiation_points.map((n: string, i: number) => (
@@ -259,7 +259,7 @@ export default function R3DirectorReport({ data, round = 3 }: Props) {
             <section>
               <SectionTitle number={6} title="액션 아이템" />
               <Card>
-                {s6.before_visit?.length > 0 && (
+                {Array.isArray(s6.before_visit) && s6.before_visit.length > 0 && (
                   <div className="mb-4">
                     <p className="text-xs font-bold text-green-600 mb-2">내원 전</p>
                     {s6.before_visit.map((a: string, i: number) => (
@@ -267,7 +267,7 @@ export default function R3DirectorReport({ data, round = 3 }: Props) {
                     ))}
                   </div>
                 )}
-                {s6.during_consultation?.length > 0 && (
+                {Array.isArray(s6.during_consultation) && s6.during_consultation.length > 0 && (
                   <div className="mb-4">
                     <p className="text-xs font-bold text-purple-600 mb-2">상담 시</p>
                     {s6.during_consultation.map((a: string, i: number) => (
@@ -275,7 +275,7 @@ export default function R3DirectorReport({ data, round = 3 }: Props) {
                     ))}
                   </div>
                 )}
-                {s6.after_consultation?.length > 0 && (
+                {Array.isArray(s6.after_consultation) && s6.after_consultation.length > 0 && (
                   <div>
                     <p className="text-xs font-bold text-blue-600 mb-2">상담 후</p>
                     {s6.after_consultation.map((a: string, i: number) => (

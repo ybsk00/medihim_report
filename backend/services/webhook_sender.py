@@ -1,4 +1,4 @@
-"""이뽀 앱 Webhook 발송 서비스 — 리포트 완료/실패 알림"""
+"""이뻐 앱 Webhook 발송 서비스 — 리포트 완료/실패 알림"""
 
 import asyncio
 import hmac

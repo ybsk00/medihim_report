@@ -295,7 +295,7 @@ export default function EmbedClient({
           />
         </div>
 
-        {/* 이뽀 메시지 */}
+        {/* 이뻐 메시지 */}
         <div className="fade-in-section" ref={(el) => { sectionRefs.current[9] = el; }}>
           <Section9IppeoMessage
             paragraphs={(data.section10_ippeo_message?.paragraphs ?? data.section9_ippeo_message?.paragraphs) || []}

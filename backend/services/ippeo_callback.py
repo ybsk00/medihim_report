@@ -1,4 +1,4 @@
-"""이뽀 앱에 리포트 완료 알림 전송 (report_ready webhook callback)"""
+"""이뻐 앱에 리포트 완료 알림 전송 (report_ready webhook callback)"""
 
 import asyncio
 import hmac
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 async def notify_report_ready(consultation_id: str):
-    """리포트 생성 완료 시 이뽀 앱에 콜백 전송 (운영 + 개발 동시)"""
+    """리포트 생성 완료 시 이뻐 앱에 콜백 전송 (운영 + 개발 동시)"""
     from config import IPPEO_WEBHOOK_URL, IPPEO_WEBHOOK_URL_DEV, IPPEO_WEBHOOK_SECRET, IPPEO_API_KEY, FRONTEND_URL
     from services.supabase_client import get_supabase
 
