@@ -40,6 +40,7 @@ async def write_r3_report(
     speaker_segments: list | None = None,
     admin_direction: str | None = None,
     input_lang: str = "ja",
+    consultation_round: int = 3,
 ) -> dict:
     rag_context = ""
     if rag_results:
@@ -49,6 +50,7 @@ async def write_r3_report(
         rag_context = "※참고자료 없음. 상담 내용만 기반으로 작성하세요."
 
     category_label = "성형외과" if classification == "plastic_surgery" else "피부과"
+    role_label = "의사" if consultation_round == 2 else "상담실장"
 
     admin_direction_section = ""
     if admin_direction:
@@ -84,8 +86,8 @@ async def write_r3_report(
     now_kst = datetime.now(kst)
     date_str = f"{now_kst.year}년 {now_kst.month}월 {now_kst.day}일"
 
-    prompt = f"""다음 상담 정보를 바탕으로 상담실장용 실무 설계 리포트를 JSON 형식으로 작성하세요.
-3차 상담(시술 확정 단계)에서 상담실장이 활용할 가격, 옵션, 일정, 고려사항을 정리합니다.
+    prompt = f"""다음 상담 정보를 바탕으로 {role_label}용 실무 설계 리포트를 JSON 형식으로 작성하세요.
+{consultation_round}차 상담에서 {role_label}이(가) 활용할 가격, 옵션, 일정, 고려사항을 정리합니다.
 
 == 분류 ==
 {category_label}
@@ -107,7 +109,7 @@ async def write_r3_report(
 {admin_direction_section}
 == 출력 JSON 형식 ==
 {{
-    "title": "{customer_name} 환자 — {category_label} 상담실장 리포트",
+    "title": "{customer_name} 환자 — {category_label} {role_label} 리포트",
     "date": "{date_str}",
 
     "section1_consultation_summary": {{

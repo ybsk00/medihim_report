@@ -151,13 +151,14 @@ def _build_fallback_r4_ko(customer_name: str, classification: str) -> dict:
 
 
 
-def _build_fallback_r3(customer_name: str, classification: str) -> dict:
-    """R3 상담실장용 폴백 리포트 (한국어, 6섹션 — 가격/옵션/고려사항)"""
+def _build_fallback_r3(customer_name: str, classification: str, consultation_round: int = 3) -> dict:
+    """R3 병원용 폴백 리포트 (한국어, 6섹션)"""
     category_ko = "피부과" if classification == "dermatology" else "성형외과"
+    role_label = "의사" if consultation_round == 2 else "상담실장"
     today = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
 
     return {
-        "title": f"{customer_name} 환자 — {category_ko} 상담실장 리포트",
+        "title": f"{customer_name} 환자 — {category_ko} {role_label} 리포트",
         "date": today,
         "section1_consultation_summary": {
             "name": customer_name,
@@ -224,13 +225,13 @@ async def _update_consultation(consultation_id: str, data: dict):
 
 
 async def _save_fallback_reports(
-    consultation_id: str, customer_name: str, classification: str,
+    consultation_id: str, customer_name: str, classification: str, consultation_round: int = 3,
 ):
     """폴백 리포트 저장 (R3 + R4 쌍)"""
     fb_r4 = _build_fallback_r4(customer_name, classification)
     fb_r4_ko = _build_fallback_r4_ko(customer_name, classification)
     await _save_report(consultation_id, "r4", fb_r4, [], 0, 3, report_data_ko=fb_r4_ko)
-    fb_r3 = _build_fallback_r3(customer_name, classification)
+    fb_r3 = _build_fallback_r3(customer_name, classification, consultation_round)
     await _save_report(consultation_id, "r3", fb_r3, [], 0, 3)
 
 
@@ -244,6 +245,7 @@ async def run_pipeline(consultation_id: str):
 
     original_text = consultation["original_text"]
     customer_name = consultation["customer_name"]
+    consultation_round = consultation.get("consultation_round") or 3
 
     try:
         # ========================================
@@ -375,7 +377,7 @@ async def run_pipeline(consultation_id: str):
         # 미분류면 폴백 리포트 생성 후 콜백 전송
         if final_classification == "unclassified":
             logger.info(f"[Pipeline:{consultation_id[:8]}] Unclassified → generating fallback reports (R3+R4)")
-            await _save_fallback_reports(consultation_id, customer_name, "plastic_surgery")
+            await _save_fallback_reports(consultation_id, customer_name, "plastic_surgery", consultation_round)
             logger.info(f"[Pipeline:{consultation_id[:8]}] Unclassified fallback saved (R3+R4)")
             await _update_consultation(consultation_id, {
                 "status": "report_ready",
@@ -398,6 +400,7 @@ async def run_pipeline(consultation_id: str):
             cta_signals=cta_result.get("cta_signals"),
             speaker_segments=cta_result.get("speaker_segments"),
             input_lang=input_lang,
+            consultation_round=consultation_round,
         )
 
     except Exception as e:
@@ -407,7 +410,7 @@ async def run_pipeline(consultation_id: str):
         # 폴백 리포트 저장 (R3 + R4)
         fallback_classification = consultation.get("classification") or "plastic_surgery"
         try:
-            await _save_fallback_reports(consultation_id, customer_name, fallback_classification)
+            await _save_fallback_reports(consultation_id, customer_name, fallback_classification, consultation_round)
             logger.info(f"[Pipeline:{consultation_id[:8]}] Fallback saved (R3+R4)")
             await _update_consultation(consultation_id, {
                 "status": "report_ready",
@@ -443,6 +446,7 @@ async def resume_pipeline(consultation_id: str, classification: str):
     cta_level = consultation.get("cta_level")
     cta_signals = consultation.get("cta_signals")
     speaker_segments = consultation.get("speaker_segments")
+    consultation_round = consultation.get("consultation_round") or 3
     # 수동 분류 업데이트
     await _update_consultation(consultation_id, {
         "classification": classification,
@@ -458,6 +462,7 @@ async def resume_pipeline(consultation_id: str, classification: str):
             cta_signals=cta_signals,
             speaker_segments=speaker_segments,
             input_lang=input_lang,
+            consultation_round=consultation_round,
         )
     except Exception as e:
         await _update_consultation(consultation_id, {
@@ -575,6 +580,7 @@ async def _generate_all_reports(
     cta_signals: list | None = None,
     speaker_segments: list | None = None,
     input_lang: str = "ja",
+    consultation_round: int = 3,
 ):
     """R3(상담실장) + R4(소비자) 리포트 생성. 모든 회차에서 동일하게 생성."""
     db = get_supabase()
@@ -603,6 +609,7 @@ async def _generate_all_reports(
         consultation_id, original_text, translated_text,
         intent, classification, customer_name, rag_results,
         cta_level, cta_signals, speaker_segments, input_lang,
+        consultation_round,
     )
 
     # ========================================
@@ -621,11 +628,13 @@ async def _generate_round3_r3_r4(
     consultation_id, original_text, translated_text,
     intent, classification, customer_name, rag_results,
     cta_level, cta_signals, speaker_segments, input_lang,
+    consultation_round=3,
 ):
-    """3차 상담 → R3 상담실장 + R4 소비자 리포트 생성 (기존 로직)"""
+    """R3 + R4 리포트 생성 (모든 회차에서 호출)"""
     db = get_supabase()
+    role_label = "의사" if consultation_round == 2 else "상담실장"
 
-    # R3: 상담실장 리포트 (가격/견적/고려사항)
+    # R3: 병원용 리포트
     try:
         await _write_and_review(
             consultation_id, "r3", write_r3_report,
@@ -633,13 +642,14 @@ async def _generate_round3_r3_r4(
              "intent_extraction": intent, "classification": classification,
              "rag_results": rag_results, "customer_name": customer_name,
              "cta_level": cta_level, "cta_signals": cta_signals,
-             "speaker_segments": speaker_segments, "input_lang": input_lang},
+             "speaker_segments": speaker_segments, "input_lang": input_lang,
+             "consultation_round": consultation_round},
             rag_results)
-        logger.info(f"[Pipeline:{consultation_id[:8]}] R3 complete")
+        logger.info(f"[Pipeline:{consultation_id[:8]}] R3 complete (round={consultation_round}, role={role_label})")
     except Exception as e:
         logger.error(f"[Pipeline:{consultation_id[:8]}] R3 failed, saving fallback: {str(e)}", exc_info=True)
         await _log_agent(consultation_id, "r3_writer", None, None, 0, "failed", str(e))
-        fallback_r3 = _build_fallback_r3(customer_name, classification)
+        fallback_r3 = _build_fallback_r3(customer_name, classification, consultation_round)
         await _save_report(consultation_id, "r3", fallback_r3, rag_results, 0, 3)
         logger.info(f"[Pipeline:{consultation_id[:8]}] R3 fallback saved")
 
