@@ -14,8 +14,6 @@ from agents.validator import validate_classification
 from agents.rag_agent import search_relevant_faq
 from agents.report_writer import write_report
 from agents.report_reviewer import review_report
-from agents.r1_cs_writer import write_r1_report
-from agents.r2_director_writer import write_r2_report
 from agents.r3_director_writer import write_r3_report
 from services.ippeo_callback import notify_report_ready
 
@@ -152,80 +150,6 @@ def _build_fallback_r4_ko(customer_name: str, classification: str) -> dict:
     }
 
 
-def _build_fallback_r1(customer_name: str, classification: str) -> dict:
-    """R1 사전상담 폴백 리포트 (한국어, 4섹션)"""
-    category_ko = "피부과" if classification == "dermatology" else "성형외과"
-    today = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
-
-    return {
-        "title": f"{customer_name} 고객 — {category_ko} 사전상담 리포트",
-        "date": today,
-        "section1_customer_profile": {
-            "name": customer_name,
-            "consultation_date": today,
-            "classification": category_ko,
-            "summary": "상담 정보가 부족하여 상세 리포트 생성에 실패했습니다.",
-        },
-        "section2_customer_needs": {
-            "main_concerns": ["상담 내용 부족으로 파악 불가"],
-            "desired_outcome": "추가 상담이 필요합니다.",
-            "mentioned_procedures": [],
-            "urgency": "미정",
-        },
-        "section3_consultation_context": {
-            "current_state": "정보 없음",
-            "key_questions": [],
-            "emotional_tone": "파악 불가",
-        },
-        "section4_next_steps": {
-            "recommended_topics": [
-                "구체적인 고민 부위와 증상 확인",
-                "과거 시술/수술 이력 확인",
-                "희망하는 결과와 기대치 파악",
-            ],
-            "additional_checks": ["알레르기 이력", "현재 복용 약물"],
-            "notes": "추가 상담 시 구체적인 정보 확보가 필요합니다.",
-        },
-    }
-
-
-def _build_fallback_r2(customer_name: str, classification: str) -> dict:
-    """R2 의사용 폴백 리포트 (한국어, 5섹션)"""
-    category_ko = "피부과" if classification == "dermatology" else "성형외과"
-    today = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
-
-    return {
-        "title": f"{customer_name} 환자 — {category_ko} 의사용 상담리포트",
-        "date": today,
-        "section1_patient_summary": {
-            "name": customer_name,
-            "classification": category_ko,
-            "consultation_date": today,
-            "chief_complaint": "상담 정보가 부족하여 주소 파악이 어렵습니다.",
-            "consultation_history": None,
-        },
-        "section2_medical_assessment": {
-            "current_condition": "정보 부족으로 평가 불가.",
-            "relevant_history": None,
-            "key_findings": ["추가 상담을 통한 정보 확보가 필요합니다."],
-        },
-        "section3_treatment_options": {
-            "recommended_procedures": [],
-            "alternative_approaches": [],
-            "contraindications": [],
-        },
-        "section4_clinical_considerations": {
-            "risk_factors": ["정보 부족으로 위험 요소 평가 불가"],
-            "expected_outcome": "구체적인 상담 후 평가 가능합니다.",
-            "recovery_overview": "시술 계획 확정 후 안내 가능합니다.",
-        },
-        "section5_pre_consultation_notes": {
-            "recommended_tests": [],
-            "patient_readiness": "미분석",
-            "doctor_notes": "추가 상담을 통해 구체적인 증상과 희망 사항을 확인해주세요.",
-        },
-    }
-
 
 def _build_fallback_r3(customer_name: str, classification: str) -> dict:
     """R3 상담실장용 폴백 리포트 (한국어, 6섹션 — 가격/옵션/고려사항)"""
@@ -299,50 +223,16 @@ async def _update_consultation(consultation_id: str, data: dict):
     db.table("consultations").update(data).eq("id", consultation_id).execute()
 
 
-async def _save_fallback_by_round(
-    consultation_id: str, customer_name: str, classification: str, consultation_round: int,
+async def _save_fallback_reports(
+    consultation_id: str, customer_name: str, classification: str,
 ):
-    """회차별 폴백 리포트 저장"""
-    if consultation_round == 1:
-        fb = _build_fallback_r1(customer_name, classification)
-        await _save_report(consultation_id, "r1", fb, [], 0, 3)
-    elif consultation_round == 2:
-        fb = _build_fallback_r2(customer_name, classification)
-        await _save_report(consultation_id, "r2", fb, [], 0, 3)
-    else:
-        fb_r4 = _build_fallback_r4(customer_name, classification)
-        fb_r4_ko = _build_fallback_r4_ko(customer_name, classification)
-        await _save_report(consultation_id, "r4", fb_r4, [], 0, 3, report_data_ko=fb_r4_ko)
-        fb_r3 = _build_fallback_r3(customer_name, classification)
-        await _save_report(consultation_id, "r3", fb_r3, [], 0, 3)
+    """폴백 리포트 저장 (R3 + R4 쌍)"""
+    fb_r4 = _build_fallback_r4(customer_name, classification)
+    fb_r4_ko = _build_fallback_r4_ko(customer_name, classification)
+    await _save_report(consultation_id, "r4", fb_r4, [], 0, 3, report_data_ko=fb_r4_ko)
+    fb_r3 = _build_fallback_r3(customer_name, classification)
+    await _save_report(consultation_id, "r3", fb_r3, [], 0, 3)
 
-
-async def _find_previous_round_report(
-    ippeo_consultation_id: str, target_round: int, report_type: str,
-) -> dict | None:
-    """같은 ippeo_consultation_id의 이전 회차 리포트 조회"""
-    if not ippeo_consultation_id:
-        return None
-    db = get_supabase()
-    prev_consultation = (
-        db.table("consultations")
-        .select("id")
-        .eq("ippeo_consultation_id", ippeo_consultation_id)
-        .eq("consultation_round", target_round)
-        .limit(1)
-        .execute()
-    )
-    if not prev_consultation.data:
-        return None
-    prev_report = (
-        db.table("reports")
-        .select("report_data")
-        .eq("consultation_id", prev_consultation.data[0]["id"])
-        .eq("report_type", report_type)
-        .limit(1)
-        .execute()
-    )
-    return prev_report.data[0]["report_data"] if prev_report.data else None
 
 
 async def run_pipeline(consultation_id: str):
@@ -354,8 +244,6 @@ async def run_pipeline(consultation_id: str):
 
     original_text = consultation["original_text"]
     customer_name = consultation["customer_name"]
-    consultation_round = consultation.get("consultation_round") or 1
-    ippeo_consultation_id = consultation.get("ippeo_consultation_id") or ""
 
     try:
         # ========================================
@@ -484,11 +372,11 @@ async def run_pipeline(consultation_id: str):
             "classification_reason": reason,
         })
 
-        # 미분류면 폴백 리포트 생성 후 콜백 전송 (회차별 분기)
+        # 미분류면 폴백 리포트 생성 후 콜백 전송
         if final_classification == "unclassified":
-            logger.info(f"[Pipeline:{consultation_id[:8]}] Unclassified (round={consultation_round}) → generating fallback reports")
-            await _save_fallback_by_round(consultation_id, customer_name, "plastic_surgery", consultation_round)
-            logger.info(f"[Pipeline:{consultation_id[:8]}] Unclassified fallback saved (round={consultation_round})")
+            logger.info(f"[Pipeline:{consultation_id[:8]}] Unclassified → generating fallback reports (R3+R4)")
+            await _save_fallback_reports(consultation_id, customer_name, "plastic_surgery")
+            logger.info(f"[Pipeline:{consultation_id[:8]}] Unclassified fallback saved (R3+R4)")
             await _update_consultation(consultation_id, {
                 "status": "report_ready",
                 "error_message": "[폴백] 상담 내용이 부족하여 분류 불가 — 폴백 리포트 생성",
@@ -501,7 +389,7 @@ async def run_pipeline(consultation_id: str):
             return
 
         # ========================================
-        # Step 6~ : 회차별 리포트 생성 (round=1→R1, round=2→R2, round>=3→R3+R4)
+        # Step 6~ : R3(상담실장) + R4(소비자) 리포트 생성
         # ========================================
         await _generate_all_reports(
             consultation_id, cleaned_text, text_for_analysis,
@@ -510,19 +398,17 @@ async def run_pipeline(consultation_id: str):
             cta_signals=cta_result.get("cta_signals"),
             speaker_segments=cta_result.get("speaker_segments"),
             input_lang=input_lang,
-            consultation_round=consultation_round,
-            ippeo_consultation_id=ippeo_consultation_id,
         )
 
     except Exception as e:
-        logger.error(f"[Pipeline:{consultation_id[:8]}] FAILED (round={consultation_round}), saving fallback reports: {str(e)}", exc_info=True)
+        logger.error(f"[Pipeline:{consultation_id[:8]}] FAILED, saving fallback reports (R3+R4): {str(e)}", exc_info=True)
         await _log_agent(consultation_id, "pipeline", None, None, 0, "failed", str(e))
 
-        # 폴백 리포트 저장 (회차별 분기)
+        # 폴백 리포트 저장 (R3 + R4)
         fallback_classification = consultation.get("classification") or "plastic_surgery"
         try:
-            await _save_fallback_by_round(consultation_id, customer_name, fallback_classification, consultation_round)
-            logger.info(f"[Pipeline:{consultation_id[:8]}] Fallback saved (round={consultation_round})")
+            await _save_fallback_reports(consultation_id, customer_name, fallback_classification)
+            logger.info(f"[Pipeline:{consultation_id[:8]}] Fallback saved (R3+R4)")
             await _update_consultation(consultation_id, {
                 "status": "report_ready",
                 "error_message": f"[폴백] {str(e)}",
@@ -557,9 +443,6 @@ async def resume_pipeline(consultation_id: str, classification: str):
     cta_level = consultation.get("cta_level")
     cta_signals = consultation.get("cta_signals")
     speaker_segments = consultation.get("speaker_segments")
-    consultation_round = consultation.get("consultation_round") or 1
-    ippeo_consultation_id_val = consultation.get("ippeo_consultation_id") or ""
-
     # 수동 분류 업데이트
     await _update_consultation(consultation_id, {
         "classification": classification,
@@ -575,8 +458,6 @@ async def resume_pipeline(consultation_id: str, classification: str):
             cta_signals=cta_signals,
             speaker_segments=speaker_segments,
             input_lang=input_lang,
-            consultation_round=consultation_round,
-            ippeo_consultation_id=ippeo_consultation_id_val,
         )
     except Exception as e:
         await _update_consultation(consultation_id, {
@@ -694,18 +575,16 @@ async def _generate_all_reports(
     cta_signals: list | None = None,
     speaker_segments: list | None = None,
     input_lang: str = "ja",
-    consultation_round: int = 3,
-    ippeo_consultation_id: str = "",
 ):
-    """회차별 리포트 생성. round=1→R1, round=2→R2, round>=3→R3+R4."""
+    """R3(상담실장) + R4(소비자) 리포트 생성. 모든 회차에서 동일하게 생성."""
     db = get_supabase()
 
     await _update_consultation(consultation_id, {"status": "report_generating"})
 
     # ========================================
-    # Step 6: RAG 검색 (1회, 모든 회차 공유)
+    # Step 6: RAG 검색
     # ========================================
-    logger.info(f"[Pipeline:{consultation_id[:8]}] Step 6: RAG search start (round={consultation_round})")
+    logger.info(f"[Pipeline:{consultation_id[:8]}] Step 6: RAG search start")
     start = time.time()
     keywords = intent.get("keywords", [])
     rag_results = await search_relevant_faq(keywords, classification)
@@ -718,25 +597,13 @@ async def _generate_all_reports(
     )
 
     # ========================================
-    # 회차별 분기
+    # R3 + R4 리포트 생성 (모든 회차 동일)
     # ========================================
-    if consultation_round == 1:
-        await _generate_round1_r1(
-            consultation_id, original_text, translated_text,
-            intent, classification, customer_name, rag_results, input_lang,
-        )
-    elif consultation_round == 2:
-        await _generate_round2_r2(
-            consultation_id, original_text, translated_text,
-            intent, classification, customer_name, rag_results,
-            cta_level, cta_signals, ippeo_consultation_id, input_lang,
-        )
-    else:
-        await _generate_round3_r3_r4(
-            consultation_id, original_text, translated_text,
-            intent, classification, customer_name, rag_results,
-            cta_level, cta_signals, speaker_segments, input_lang,
-        )
+    await _generate_round3_r3_r4(
+        consultation_id, original_text, translated_text,
+        intent, classification, customer_name, rag_results,
+        cta_level, cta_signals, speaker_segments, input_lang,
+    )
 
     # ========================================
     # Step 8: consultation status 업데이트 + 이뽀 콜백
@@ -748,58 +615,6 @@ async def _generate_all_reports(
         await notify_report_ready(consultation_id)
     except Exception as cb_err:
         logger.warning(f"[Pipeline:{consultation_id[:8]}] Callback failed (non-blocking): {cb_err}")
-
-
-async def _generate_round1_r1(
-    consultation_id, original_text, translated_text,
-    intent, classification, customer_name, rag_results, input_lang,
-):
-    """1차 상담 → R1 사전상담 리포트 생성"""
-    try:
-        await _write_and_review(
-            consultation_id, "r1", write_r1_report,
-            {"original_text": original_text, "translated_text": translated_text,
-             "intent_extraction": intent, "classification": classification,
-             "customer_name": customer_name, "input_lang": input_lang},
-            rag_results)
-        logger.info(f"[Pipeline:{consultation_id[:8]}] R1 complete")
-    except Exception as e:
-        logger.error(f"[Pipeline:{consultation_id[:8]}] R1 failed, saving fallback: {str(e)}", exc_info=True)
-        await _log_agent(consultation_id, "r1_writer", None, None, 0, "failed", str(e))
-        fallback_r1 = _build_fallback_r1(customer_name, classification)
-        await _save_report(consultation_id, "r1", fallback_r1, rag_results, 0, 3)
-        logger.info(f"[Pipeline:{consultation_id[:8]}] R1 fallback saved")
-
-
-async def _generate_round2_r2(
-    consultation_id, original_text, translated_text,
-    intent, classification, customer_name, rag_results,
-    cta_level, cta_signals, ippeo_consultation_id, input_lang,
-):
-    """2차 상담 → R2 의사용 리포트 생성 (1차 R1 데이터 참조)"""
-    # 이전 회차(1차) R1 리포트 조회
-    r1_data = await _find_previous_round_report(ippeo_consultation_id, 1, "r1")
-    if r1_data:
-        logger.info(f"[Pipeline:{consultation_id[:8]}] R2: Found previous R1 data")
-    else:
-        logger.info(f"[Pipeline:{consultation_id[:8]}] R2: No previous R1 data, generating independently")
-
-    try:
-        await _write_and_review(
-            consultation_id, "r2", write_r2_report,
-            {"original_text": original_text, "translated_text": translated_text,
-             "intent_extraction": intent, "classification": classification,
-             "rag_results": rag_results, "customer_name": customer_name,
-             "cta_level": cta_level, "cta_signals": cta_signals,
-             "r1_report_data": r1_data, "input_lang": input_lang},
-            rag_results)
-        logger.info(f"[Pipeline:{consultation_id[:8]}] R2 complete")
-    except Exception as e:
-        logger.error(f"[Pipeline:{consultation_id[:8]}] R2 failed, saving fallback: {str(e)}", exc_info=True)
-        await _log_agent(consultation_id, "r2_writer", None, None, 0, "failed", str(e))
-        fallback_r2 = _build_fallback_r2(customer_name, classification)
-        await _save_report(consultation_id, "r2", fallback_r2, rag_results, 0, 3)
-        logger.info(f"[Pipeline:{consultation_id[:8]}] R2 fallback saved")
 
 
 async def _generate_round3_r3_r4(
