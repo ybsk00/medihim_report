@@ -1,9 +1,16 @@
 import asyncio
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+import logging
+import os
+import tempfile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, UploadFile
 from typing import Optional
 from models.schemas import ConsultationCreate, ConsultationBulkCreate, ClassifyRequest, CTAUpdateRequest, GenerateReportsRequest, ConsultationUpdateRequest
 from services.supabase_client import get_supabase
 from agents.pipeline import run_pipeline, resume_pipeline
+
+logger = logging.getLogger(__name__)
+
+ALLOWED_AUDIO_EXTENSIONS = {".m4a", ".wav", ".mp3", ".aac", ".flac", ".ogg"}
 
 
 async def _run_pipelines_parallel(consultation_ids: list[str], concurrency: int = 5):
@@ -233,3 +240,141 @@ async def update_cta(consultation_id: str, data: CTAUpdateRequest):
         raise HTTPException(status_code=404, detail="Consultation not found")
 
     return {"id": consultation_id, "cta_level": data.cta_level}
+
+
+@router.post("/upload-audio")
+async def upload_audio_consultation(
+    background_tasks: BackgroundTasks,
+    audio_file: UploadFile = File(...),
+    customer_name: str = Form(...),
+    customer_email: str = Form(""),
+    customer_line_id: str = Form(""),
+    customer_id: str = Form(""),
+):
+    """음성 파일 업로드 → STT + 감정 분석 → 상담 등록.
+
+    지원 포맷: M4A, WAV, MP3, AAC, FLAC, OGG
+    """
+    # 확장자 검증
+    _, ext = os.path.splitext(audio_file.filename or "")
+    ext = ext.lower()
+    if ext not in ALLOWED_AUDIO_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"지원하지 않는 오디오 포맷입니다: {ext}. 지원: {', '.join(ALLOWED_AUDIO_EXTENSIONS)}",
+        )
+
+    # 임시 파일에 저장
+    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+        content = await audio_file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    logger.info(f"[UploadAudio] File saved: {tmp_path} ({len(content)} bytes, ext={ext})")
+
+    try:
+        # STT + 감정 분석 동시 수행
+        from agents.speech_emotion_analyzer import stt_with_emotion
+
+        result = await stt_with_emotion(tmp_path)
+        transcription = result.get("transcription", "")
+        detected_language = result.get("detected_language", "ja")
+        emotion_analysis = result.get("emotion_analysis", {})
+
+        if not transcription:
+            raise HTTPException(status_code=422, detail="음성에서 텍스트를 추출할 수 없었습니다")
+
+        # DB에 상담 등록
+        db = get_supabase()
+        input_lang = "ko" if detected_language == "ko" else "ja"
+
+        insert_data = {
+            "customer_id": customer_id or None,
+            "customer_name": customer_name,
+            "customer_email": customer_email,
+            "customer_line_id": customer_line_id or None,
+            "original_text": transcription,
+            "input_language": input_lang,
+            "voice_emotion_analysis": emotion_analysis,
+            "status": "registered",
+        }
+
+        consultation = db.table("consultations").insert(insert_data).execute()
+        consultation_id = consultation.data[0]["id"]
+
+        logger.info(
+            f"[UploadAudio] Consultation created: {consultation_id}, "
+            f"lang={detected_language}, voice_cta={emotion_analysis.get('voice_cta', {}).get('level', 'N/A')}"
+        )
+
+        return {
+            "id": consultation_id,
+            "status": "registered",
+            "detected_language": detected_language,
+            "transcription_length": len(transcription),
+            "voice_emotion_analysis": emotion_analysis,
+        }
+
+    finally:
+        # 임시 파일 정리
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+
+
+@router.post("/{consultation_id}/analyze-audio")
+async def analyze_audio_for_existing(
+    consultation_id: str,
+    audio_file: UploadFile = File(...),
+):
+    """기존 상담에 음성 파일로 감정 분석 추가 (STT 없이 감정 분석만).
+
+    이미 텍스트가 등록된 상담에 음성 감정 분석을 추가할 때 사용.
+    """
+    db = get_supabase()
+
+    # 상담 존재 확인
+    existing = db.table("consultations").select("id").eq("id", consultation_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+
+    # 확장자 검증
+    _, ext = os.path.splitext(audio_file.filename or "")
+    ext = ext.lower()
+    if ext not in ALLOWED_AUDIO_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"지원하지 않는 오디오 포맷: {ext}",
+        )
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+        content = await audio_file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        from agents.speech_emotion_analyzer import analyze_speech_emotion
+
+        emotion_analysis = await analyze_speech_emotion(tmp_path)
+
+        # DB 업데이트
+        db.table("consultations").update(
+            {"voice_emotion_analysis": emotion_analysis}
+        ).eq("id", consultation_id).execute()
+
+        logger.info(
+            f"[AnalyzeAudio] Emotion analysis added: {consultation_id}, "
+            f"voice_cta={emotion_analysis.get('voice_cta', {}).get('level', 'N/A')}"
+        )
+
+        return {
+            "id": consultation_id,
+            "voice_emotion_analysis": emotion_analysis,
+        }
+
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass

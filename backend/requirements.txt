@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 google-generativeai
 supabase
+python-multipart
 
 youtube-transcript-api
 pydantic

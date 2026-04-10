@@ -634,16 +634,36 @@ async def _generate_round3_r3_r4(
     db = get_supabase()
     role_label = "의사" if consultation_round == 2 else "상담실장"
 
+    # 음성 감정 분석 데이터 조회 (있으면 R3에 전달)
+    voice_emotion = None
+    try:
+        ve_result = (
+            db.table("consultations")
+            .select("voice_emotion_analysis")
+            .eq("id", consultation_id)
+            .single()
+            .execute()
+        )
+        if ve_result.data:
+            voice_emotion = ve_result.data.get("voice_emotion_analysis")
+    except Exception:
+        pass
+
     # R3: 병원용 리포트
     try:
+        r3_kwargs = {
+            "original_text": original_text, "translated_text": translated_text,
+            "intent_extraction": intent, "classification": classification,
+            "rag_results": rag_results, "customer_name": customer_name,
+            "cta_level": cta_level, "cta_signals": cta_signals,
+            "speaker_segments": speaker_segments, "input_lang": input_lang,
+            "consultation_round": consultation_round,
+        }
+        if voice_emotion:
+            r3_kwargs["voice_emotion_analysis"] = voice_emotion
         await _write_and_review(
             consultation_id, "r3", write_r3_report,
-            {"original_text": original_text, "translated_text": translated_text,
-             "intent_extraction": intent, "classification": classification,
-             "rag_results": rag_results, "customer_name": customer_name,
-             "cta_level": cta_level, "cta_signals": cta_signals,
-             "speaker_segments": speaker_segments, "input_lang": input_lang,
-             "consultation_round": consultation_round},
+            r3_kwargs,
             rag_results)
         logger.info(f"[Pipeline:{consultation_id[:8]}] R3 complete (round={consultation_round}, role={role_label})")
     except Exception as e:
