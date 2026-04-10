@@ -1165,7 +1165,12 @@ INSERT INTO classification_keywords (category, keyword, context_keywords) VALUES
 - Phase 4 (배포): 완료 — Cloud Run (백엔드) + Firebase (프론트엔드)
 - 벡터DB 파이프라인: 완료 — YouTube 2,448 + PubMed 2,336 = 4,784 벡터
 - 회차별 리포트 분기(v4.0): round=1→R1(사전상담,4섹션) round=2→R2(의사용,5섹션) round≥3→R3(상담실장,6섹션)+R4(고객용,10섹션) — 모두 활성화
-- DB 마이그레이션: 001~009 완료 (009: report_type r1→r3 재구조화)
+- DB 마이그레이션: 001~010 완료 (010: voice_emotion_analysis JSONB 컬럼)
+- R4 비용 반영: R3 비용 견적→R4 section8 자동 전달, "참고(税別)" 라벨 (2026-04-10)
+- 음성 감정 분석(SER): Gemini 멀티모달 STT + 감정 분석, M4A/WAV/MP3 지원 (2026-04-10)
+  - `POST /api/consultations/upload-audio`: 음성 → STT + 감정 분석 + 상담 등록
+  - `POST /api/consultations/{id}/analyze-audio`: 기존 상담에 감정 분석 추가
+  - R1: section3.voice_analysis, R3: section7_voice_analysis, R4: section10 톤 자동 조절
 - 추가 기능: 고객 정보 인라인 편집, 일괄 승인, 리포트 재생성, 한국어 입력 지원, FAQ 재분류 스크립트
 - 이뻐 앱 연동: Webhook 수신 + iframe embed + 콜백 전송 구현 완료
 - 폴백 로직: 미분류/에러 시 폴백 R3+R4(한국어 포함) 자동 생성 + 이뻐 콜백 전송
@@ -1209,3 +1214,6 @@ INSERT INTO classification_keywords (category, keyword, context_keywords) VALUES
 19. **Cloud Run 배포는 수동.** `gcloud run deploy` 명령으로 직접 배포. 자동 배포 트리거 설정 중 (GitHub OAuth 완료, 트리거 생성 대기).
 20. **회차별 리포트 타입 분기 절대 금지.** pipeline.py에서 consultation_round에 따라 R1/R2를 생성하면 이뻐 앱 연동 깨짐. 모든 회차에서 R3+R4만 생성. (2026-04-08 긴급 장애로 확인)
 21. **R3DirectorReport 배열 방어 필수.** Gemini가 배열 대신 문자열 반환 시 .map() 크래시. 모든 .map()에 Array.isArray 체크 필수.
+22. **R4 고객 리포트에 "음성 분석" 직접 언급 금지.** 음성 감정 데이터는 section10 톤 조절에만 활용. "음성을 분석했습니다" 같은 표현 절대 금지.
+23. **음성 업로드 시 임시 파일 반드시 삭제.** Gemini Files API 업로드 후 로컬 임시 파일 + Gemini 업로드 파일 모두 정리.
+24. **R3 비용→R4 자동 전달.** pipeline에서 R3 생성 후 section3_cost_estimate를 DB 조회→R4 writer에 전달. "참考(税別)" 라벨 필수.
