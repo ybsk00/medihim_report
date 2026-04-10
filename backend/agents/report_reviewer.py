@@ -13,7 +13,7 @@ R4_SYSTEM_INSTRUCTION = """あなたはリポートの品質管理レビュア�
 1. 10セクションが全て存在するか？（section1_key_summary〜section10_ippeo_message）
 2. 各項目が1〜2文以内で簡潔に記述されているか？（過度な長文はFail）
 3. カウンセラーが言及していない医療情報が含まれていないか？
-4. 費用情報: section8_cost_estimateのitemsに、相談で言及されていない金額が含まれていないか？（AIが創作した金額は即Fail）
+4. 費用情報: section8_cost_estimateのitemsに、相談またはR3費用見積もりに根拠のない金額が含まれていないか？（AIが根拠なく創作した金額は即Fail。R3費用見積もり由来の「参考（税別）」表記は許容）
 5. トーンが中立的・整理型か？（感情的な表現「ご安心ください」「一緒に」等はFail）
 6. セクション間で内容の重複・繰り返しがないか？
 7. section10のparagraphsに行動誘導5要素が含まれているか？
@@ -100,7 +100,7 @@ JSON 형식으로 반환:
 1. 10セクション全て存在確認（section1_key_summary, section2_cause_analysis, section3_recommendation, section4_recovery, section5_scar_info, section6_precautions, section7_risks, section8_cost_estimate, section9_visit_date, section10_ippeo_message）
 2. 簡潔さ: 各項目が1〜2文以内か？ 不必要な修飾語や冗長な表現はないか？
 3. 医療情報の正当性: 相談内容で言及されていない情報が含まれていないか？
-4. 費用情報: section8_cost_estimateのitemsに相談で言及されていない金額がないか？（AIが創作した金額は即Fail。言及なしなら空配列が正しい）
+4. 費用情報: section8_cost_estimateのitemsに相談またはR3費用見積もりに根拠のない金額がないか？（AIが根拠なく創作した金額は即Fail。R3費用見積もり由来の「参考（税別）」表記は許容）
 5. トーン: 中立的・整理型か？ 感情的表現（「ご安心ください」「温かく」「一緒に」等）が含まれていないか？
 6. 重複排除: セクション間で同じ内容が繰り返されていないか？
 7. section10のparagraphsに行動誘導5要素（ハードル低減、未来イメージ、感情報酬、安心感、行動促進）が含まれているか？ かつ、各paragraphがこのお客様固有の内容か？（テンプレ的な汎用文「魅力を引き出す」「鏡を見るたびに」「旅行で写真」等はFail）

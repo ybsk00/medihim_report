@@ -21,7 +21,7 @@ SYSTEM_INSTRUCTION = """あなたは医療コンサルティングリポート�
 - 感情的・過度に温かい表現は使用しない（「ご安心ください」「一緒に見つけましょう」等はNG）
 - 各項目は1〜2文以内で簡潔に記述する
 - セクション間で内容の重複・繰り返しを絶対に避ける
-- 価格・費用情報: 相談中に具体的な金額が言及された場合のみ、その内容をそのまま記載する。言及がなければ費用セクションを空にする。絶対にAIが費用を推測・創作してはならない。
+- 価格・費用情報: 相談中に具体的な金額が言及された場合、または病院リポート(R3)の費用見積もりが提供された場合、その内容を記載する。R3費用データがある場合は「参考費用（税別）」として必ず反映すること。AIが根拠なく費用を創作してはならない。
 
 医療情報の原則:
 - カウンセラー/医師が相談で実際に言及した内容のみを記載する
@@ -38,7 +38,7 @@ SYSTEM_INSTRUCTION = """あなたは医療コンサルティングリポート�
 5. 傷跡について — ブレットポイント（3項目以内）
 6. 施術前の注意事項 — ブレットポイント（3項目以内）
 7. リスクまとめ — ブレットポイント（4項目以内）
-8. 予想費用範囲 — 相談中に言及された金額のみ記載（言及なければ空配列）。AIが金額を創作してはならない
+8. 予想費用範囲 — 相談中に言及された金額、またはR3費用見積もりに基づく参考費用を記載。「参考（税別）」ラベル付与。AIが根拠なく金額を創作してはならない
 9. ご来院予定日 — 相談で言及された日付。なければ「未定」と記載
 10. IPPEOからの一言 + 最終整理 — 行動誘導型CTA（5つの心理要素を含む）"""
 
@@ -53,6 +53,7 @@ async def write_report(
     admin_direction: str | None = None,
     input_lang: str = "ja",
     hospital_mentions: list[dict] | None = None,
+    r3_cost_data: dict | None = None,
 ) -> dict:
     # RAG 컨텍스트를 정리 (내용 검증용)
     rag_context = ""
@@ -130,6 +131,26 @@ async def write_report(
                 cost_schedule_section += f"（{c['context']}）"
             cost_schedule_section += "\n"
         cost_schedule_section += "※ 上記の費用情報はsection8_cost_estimateのitemsに必ず反映すること。省略禁止。\n"
+
+    # R3(病院リポート)で確定された費用見積もりを反映
+    if r3_cost_data and isinstance(r3_cost_data, dict):
+        r3_items = r3_cost_data.get("items", [])
+        if r3_items:
+            cost_schedule_section += "\n== 病院リポート(R3)で確定された費用見積もり（必ずsection8に反映すること）==\n"
+            for i, item in enumerate(r3_items, 1):
+                if isinstance(item, dict):
+                    proc = item.get("procedure", "不明")
+                    cost = item.get("estimated_cost", "不明")
+                    cost_schedule_section += f"  {i}. {proc}: {cost}（参考価格）\n"
+                elif isinstance(item, str):
+                    cost_schedule_section += f"  {i}. {item}\n"
+            total = r3_cost_data.get("total_estimate")
+            if total:
+                cost_schedule_section += f"  合計目安: {total}\n"
+            note = r3_cost_data.get("note")
+            if note:
+                cost_schedule_section += f"  備考: {note}\n"
+            cost_schedule_section += "※ 上記のR3費用データはsection8_cost_estimateのitemsに日本語で必ず反映すること。「参考（税別）」ラベルを付けて記載。省略禁止。\n"
 
     if visit_schedule and isinstance(visit_schedule, dict):
         dates = visit_schedule.get("mentioned_dates", [])
@@ -243,11 +264,11 @@ async def write_report(
 
     "section8_cost_estimate": {{
         "items": [
-            "相談中に言及された費用情報1（例: 鼻尖形成術 単独: 約OOO〜OOO万ウォン）",
-            "相談中に言及された費用情報2（例: 併用時: 追加費用発生）"
+            "費用情報1（例: 鼻尖形成術: 約OOO〜OOO万ウォン（参考・税別））",
+            "費用情報2（例: 併用時: 追加費用発生（参考・税別））"
         ],
         "includes": "含まれる項目（例: 麻酔/検査費。言及がなければnull）",
-        "note": "費用に関する補足（例: 正確なお見積もりは診察後にご案内。言及がなければnull）"
+        "note": "費用に関する補足（例: 正確なお見積もりは診察後にご案内いたします。）"
     }},
 
     "section9_visit_date": {{
@@ -281,7 +302,7 @@ async def write_report(
 }}
 
 重要ルール:
-- section8_cost_estimate: 相談中にカウンセラーが具体的な金額を言及した場合のみ記載すること。AIが費用を推測・創作することは絶対禁止。言及がなければitemsは空配列[]にすること。「相談で確認された費用情報」セクションが提供されている場合、その内容を必ず反映すること
+- section8_cost_estimate: 相談中に言及された金額、または「病院リポート(R3)で確定された費用見積もり」が提供されている場合、その内容を日本語に変換して必ず反映すること。各項目に「参考（税別）」ラベルを付けること。R3費用データも相談内容データもない場合のみitemsを空配列[]にすること。AIが根拠なく費用を創作することは禁止
 - section1〜3は相談で言及された内容のみに基づくこと
 - section4（回復スケジュール）: 相談で具体的な回復期間が言及された場合はその内容を優先的に記載すること（病院別の回復情報がある場合は区別して記載）。言及がない場合は、提案された施術に基づく一般的な回復経過を記載すること（「診察時に説明します」のような空回答は禁止）
 - section5（傷跡）・section6（注意事項）・section7（リスク）は、相談で言及がなくても該当施術の一般的な医学情報を記載すること（空にしない）

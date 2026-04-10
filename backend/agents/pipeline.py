@@ -653,7 +653,25 @@ async def _generate_round3_r3_r4(
         await _save_report(consultation_id, "r3", fallback_r3, rag_results, 0, 3)
         logger.info(f"[Pipeline:{consultation_id[:8]}] R3 fallback saved")
 
-    # R4: 소비자 리포트 (일본어) — 기존 로직 그대로
+    # R3에서 확정된 비용 데이터 추출 → R4에 전달
+    r3_cost_data = None
+    try:
+        r3_existing = (
+            db.table("reports")
+            .select("report_data")
+            .eq("consultation_id", consultation_id)
+            .eq("report_type", "r3")
+            .execute()
+        )
+        if r3_existing.data and r3_existing.data[0].get("report_data"):
+            r3_report = r3_existing.data[0]["report_data"]
+            r3_cost_data = r3_report.get("section3_cost_estimate")
+            if r3_cost_data:
+                logger.info(f"[Pipeline:{consultation_id[:8]}] R3 cost data extracted for R4: {len(r3_cost_data.get('items', []))} items")
+    except Exception as cost_err:
+        logger.warning(f"[Pipeline:{consultation_id[:8]}] R3 cost extraction failed (non-blocking): {cost_err}")
+
+    # R4: 소비자 리포트 (일본어) — R3 비용 데이터 전달
     hospital_mentions = intent.get("hospital_mentions", []) if intent else []
 
     try:
@@ -671,6 +689,7 @@ async def _generate_round3_r3_r4(
                 admin_direction=accumulated_feedback,
                 input_lang=input_lang,
                 hospital_mentions=hospital_mentions,
+                r3_cost_data=r3_cost_data,
             )
             duration = int((time.time() - start) * 1000)
             logger.info(f"[Pipeline:{consultation_id[:8]}] R4 written ({duration}ms)")
@@ -809,6 +828,21 @@ async def regenerate_report(report_id: str, direction: str):
         else:  # R4 (기본)
             regen_hospital_mentions = intent.get("hospital_mentions", []) if intent else []
 
+            # R3에서 확정된 비용 데이터 조회
+            regen_r3_cost = None
+            try:
+                r3_existing = (
+                    db.table("reports")
+                    .select("report_data")
+                    .eq("consultation_id", consultation_id)
+                    .eq("report_type", "r3")
+                    .execute()
+                )
+                if r3_existing.data and r3_existing.data[0].get("report_data"):
+                    regen_r3_cost = r3_existing.data[0]["report_data"].get("section3_cost_estimate")
+            except Exception:
+                pass
+
             r4_report_data = None
             r4_review_count = 0
             max_retries = 3
@@ -822,6 +856,7 @@ async def regenerate_report(report_id: str, direction: str):
                     admin_direction=current_direction,
                     input_lang=input_lang,
                     hospital_mentions=regen_hospital_mentions,
+                    r3_cost_data=regen_r3_cost,
                 )
                 duration = int((time.time() - start) * 1000)
                 await _log_agent(
