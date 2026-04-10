@@ -8,6 +8,43 @@ from services.gemini_client import generate_json, safe_parse_json
 
 logger = logging.getLogger(__name__)
 
+
+def _build_voice_section(voice_emotion_analysis: dict | None) -> str:
+    """음성 감정 분석 데이터를 프롬프트 섹션으로 변환"""
+    if not voice_emotion_analysis or not isinstance(voice_emotion_analysis, dict):
+        return ""
+    v = voice_emotion_analysis
+    lines = ["\n== 음성 감정 분석 (AI 음성 분석 결과) =="]
+    sp = v.get("speech_patterns", {})
+    if sp:
+        lines.append(f"말투 — 망설임: {sp.get('hesitation_level', 'N/A')}, 확신도: {sp.get('confidence_level', 'N/A')}")
+        fillers = sp.get("filler_words", [])
+        if fillers:
+            lines.append(f"  필러: {', '.join(fillers[:5])} (약 {sp.get('filler_count', '?')}회)")
+    inton = v.get("intonation", {})
+    if inton:
+        lines.append(f"억양 — 패턴: {inton.get('dominant_pattern', 'N/A')}, 질문조: {inton.get('question_ratio', 'N/A')}")
+    speed = v.get("speech_speed", {})
+    if speed:
+        lines.append(f"말 속도 — 전체: {speed.get('overall', 'N/A')}, 변동: {speed.get('variation', 'N/A')}")
+    silence = v.get("silence", {})
+    if silence and silence.get("notable_pauses"):
+        lines.append("침묵:")
+        for p in silence["notable_pauses"][:3]:
+            lines.append(f"  - {p.get('context', '')}: 약 {p.get('estimated_duration', '?')}초 ({p.get('interpretation', '')})")
+    vcta = v.get("voice_cta", {})
+    if vcta:
+        lines.append(f"음성 CTA — {vcta.get('level', 'N/A').upper()} (확신도: {vcta.get('confidence_score', 'N/A')})")
+    emotion = v.get("overall_emotion", {})
+    if emotion:
+        lines.append(f"감정 — 주: {emotion.get('primary_emotion', 'N/A')}, 변화: {emotion.get('emotional_shift', 'N/A')}")
+    summary = v.get("summary")
+    if summary:
+        lines.append(f"요약: {summary}")
+    lines.append("※ 위 음성 분석을 section3_consultation_context의 emotional_tone에 반영하세요.")
+    return "\n".join(lines)
+
+
 SYSTEM_INSTRUCTION = """당신은 사전상담 리포트 전문 작성자입니다.
 상담실장이 본 상담에 들어가기 전, 고객이 누구이고 무엇을 원하는지 빠르게 파악할 수 있도록
 사전상담 내용을 4섹션으로 정리합니다.
@@ -33,6 +70,7 @@ async def write_r1_report(
     customer_name: str,
     input_lang: str = "ja",
     admin_direction: str | None = None,
+    voice_emotion_analysis: dict | None = None,
 ) -> dict:
     category_label = "성형외과" if classification == "plastic_surgery" else "피부과"
 
@@ -69,6 +107,7 @@ async def write_r1_report(
 
 == 의도 추출 결과 ==
 {json.dumps(intent_extraction, ensure_ascii=False)}
+{_build_voice_section(voice_emotion_analysis)}
 {admin_direction_section}
 == 출력 JSON 형식 ==
 {{
@@ -92,7 +131,15 @@ async def write_r1_report(
     "section3_consultation_context": {{
         "current_state": "현재 상태/과거 시술 이력 1~2문 (언급 없으면 '정보 없음')",
         "key_questions": ["고객이 질문한 내용 1", "질문 2"],
-        "emotional_tone": "고객의 태도/감정 상태 1문 (불안, 적극적, 탐색적 등)"
+        "emotional_tone": "고객의 태도/감정 상태 1문 (불안, 적극적, 탐색적 등)"{''',
+        "voice_analysis": {{
+            "speech_patterns": "말투 분석 — 망설임/확신 정도와 주요 예시 1~2문",
+            "intonation": "억양 분석 — 상승/하강 패턴과 의미 1~2문",
+            "speech_speed": "말 속도 — 전체 속도와 변동 특이사항 1문",
+            "silence_patterns": "침묵 분석 — 주요 침묵 발생 상황과 해석 1~2문",
+            "voice_cta": "음성 CTA 레벨 + 텍스트 CTA와 비교 1~2문",
+            "emotional_summary": "음성에서 감지된 감정 변화 요약 (텍스트만으로는 알 수 없는 인사이트) 2~3문"
+        }}''' if voice_emotion_analysis else ''}
     }},
 
     "section4_next_steps": {{

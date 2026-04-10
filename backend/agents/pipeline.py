@@ -710,6 +710,7 @@ async def _generate_round3_r3_r4(
                 input_lang=input_lang,
                 hospital_mentions=hospital_mentions,
                 r3_cost_data=r3_cost_data,
+                voice_emotion_analysis=voice_emotion,
             )
             duration = int((time.time() - start) * 1000)
             logger.info(f"[Pipeline:{consultation_id[:8]}] R4 written ({duration}ms)")
@@ -870,6 +871,15 @@ async def regenerate_report(report_id: str, direction: str):
 
             for attempt in range(max_retries):
                 start = time.time()
+                # 음성 감정 분석 조회
+                regen_voice = None
+                try:
+                    ve = db.table("consultations").select("voice_emotion_analysis").eq("id", consultation_id).single().execute()
+                    if ve.data:
+                        regen_voice = ve.data.get("voice_emotion_analysis")
+                except Exception:
+                    pass
+
                 r4_report_data = await write_report(
                     original_text, translated_text, intent, classification,
                     rag_results, customer_name,
@@ -877,6 +887,7 @@ async def regenerate_report(report_id: str, direction: str):
                     input_lang=input_lang,
                     hospital_mentions=regen_hospital_mentions,
                     r3_cost_data=regen_r3_cost,
+                    voice_emotion_analysis=regen_voice,
                 )
                 duration = int((time.time() - start) * 1000)
                 await _log_agent(

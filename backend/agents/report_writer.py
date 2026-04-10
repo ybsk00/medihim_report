@@ -54,6 +54,7 @@ async def write_report(
     input_lang: str = "ja",
     hospital_mentions: list[dict] | None = None,
     r3_cost_data: dict | None = None,
+    voice_emotion_analysis: dict | None = None,
 ) -> dict:
     # RAG 컨텍스트를 정리 (내용 검증용)
     rag_context = ""
@@ -163,6 +164,48 @@ async def write_report(
                 cost_schedule_section += f"  希望時期: {timing}\n"
             cost_schedule_section += f"※ 上記の日程はsection9_visit_dateに必ず反映すること。年が不明な場合は{now_jst.year}年として記載。\n"
 
+    # 음성 감정 분석 → section10 톤 가이드 생성
+    voice_tone_guide = ""
+    if voice_emotion_analysis and isinstance(voice_emotion_analysis, dict):
+        emotion = voice_emotion_analysis.get("overall_emotion", {})
+        primary = emotion.get("primary_emotion", "") if emotion else ""
+        speech = voice_emotion_analysis.get("speech_patterns", {})
+        hesitation = speech.get("hesitation_level", "") if speech else ""
+        vcta = voice_emotion_analysis.get("voice_cta", {})
+        voice_level = vcta.get("level", "") if vcta else ""
+
+        voice_tone_guide = "\n== 音声分析に基づくトーン調整指示（section10に反映）==\n"
+        # 불안/망설임 감지 시
+        if primary in ("不安", "緊張", "心配") or hesitation == "high":
+            voice_tone_guide += (
+                "お客様の音声から不安やためらいが感じられました。\n"
+                "section10_ippeo_messageの【安心感】パラグラフで、"
+                "「ご不安もあるかと思いますが、どうぞご安心ください」のような"
+                "穏やかな安心感を伝えるトーンを強化してください。\n"
+                "【ハードル低減】も「大きな決断に感じるかもしれませんが」と共感を入れてください。\n"
+            )
+        # 확신/적극적 감지 시
+        elif primary in ("期待", "関心", "意欲") or voice_level == "hot":
+            voice_tone_guide += (
+                "お客様の音声から積極的な関心と期待が感じられました。\n"
+                "section10_ippeo_messageの【行動促進】パラグラフで、"
+                "具体的な次のステップへの誘導を積極的にしてください。\n"
+            )
+        # 무관심/소극적 감지 시
+        elif primary in ("無関心", "消極") or voice_level == "cool":
+            voice_tone_guide += (
+                "お客様の音声からまだ慎重な姿勢が感じられました。\n"
+                "section10_ippeo_messageでは押し付けにならないよう、"
+                "「ご自身のペースでじっくりご検討ください」のような"
+                "ゆったりとしたトーンにしてください。\n"
+            )
+        else:
+            voice_tone_guide += (
+                f"お客様の音声感情: {primary or '中立'}。\n"
+                "section10_ippeo_messageのトーンをこの感情状態に合わせて調整してください。\n"
+            )
+        voice_tone_guide += "※ 「音声を分析しました」等の直接的な言及は絶対禁止。自然な共感として表現すること。\n"
+
     prompt = f"""{admin_direction_section}以下の情報を元に、10セクションの日本語リポートをJSON形式で作成してください。
 各項目は簡潔に1〜2文以内で記述し、セクション間の重複を排除してください。
 カウンセラーが相談で実際に言及した内容のみを記載してください。
@@ -179,6 +222,7 @@ async def write_report(
 
 {consultation_section}
 {cost_schedule_section}
+{voice_tone_guide}
 == 意図抽出結果 ==
 {json.dumps(intent_extraction, ensure_ascii=False)}
 
