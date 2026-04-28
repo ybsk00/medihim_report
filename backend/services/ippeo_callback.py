@@ -76,9 +76,45 @@ async def notify_report_ready(consultation_id: str):
         "customer_name": c["customer_name"],
     }
 
+    # R4 폴백 시 직전 회차 정상 R4 토큰 승계 (페이로드 키/URL/status 변경 없이 token만 치환)
+    inherited_r4_token = None
+    is_fallback = (c.get("error_message") or "").startswith("[폴백]")
+    if is_fallback and ippeo_consultation_id and "_r" in ippeo_consultation_id:
+        prefix = ippeo_consultation_id.rsplit("_r", 1)[0]
+        prior = (
+            db.table("consultations")
+            .select("id, consultation_round")
+            .like("ippeo_consultation_id", f"{prefix}_r%")
+            .lt("consultation_round", consultation_round)
+            .is_("error_message", "null")
+            .order("consultation_round", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if prior.data:
+            prior_id = prior.data[0]["id"]
+            prior_round = prior.data[0]["consultation_round"]
+            prior_r4 = (
+                db.table("reports")
+                .select("access_token")
+                .eq("consultation_id", prior_id)
+                .eq("report_type", "r4")
+                .limit(1)
+                .execute()
+            )
+            if prior_r4.data and prior_r4.data[0].get("access_token"):
+                inherited_r4_token = prior_r4.data[0]["access_token"]
+                logger.info(
+                    f"[Callback] R4 폴백 감지 → 직전 정상 R4 토큰 승계 "
+                    f"(round {prior_round} → {consultation_round}, "
+                    f"consultation={consultation_id[:8]})"
+                )
+
     for r in reports.data or []:
         token = r["access_token"]
         if r["report_type"] == "r4":
+            if inherited_r4_token:
+                token = inherited_r4_token
             payload["patient_report"] = {
                 "report_token": token,
                 "embed_url": {
