@@ -4,8 +4,8 @@ import { useState, useRef } from "react";
 
 // NEXT_PUBLIC_API_URL에 /api가 포함되어 있으므로 제거
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://ippo-backend-3h7djqxgyq-du.a.run.app/api").replace(/\/api$/, "");
-const API_KEY = "***REMOVED***";
-const WEBHOOK_SECRET = "***REMOVED***";
+const API_KEY = process.env.NEXT_PUBLIC_IPPEO_API_KEY || "";
+const WEBHOOK_SECRET = process.env.NEXT_PUBLIC_IPPEO_WEBHOOK_SECRET || "";
 
 // HMAC-SHA256 서명 생성 (Web Crypto API)
 async function createSignature(body: string): Promise<string> {

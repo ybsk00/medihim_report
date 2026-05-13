@@ -9,7 +9,9 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS", "")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
-JWT_SECRET = os.getenv("JWT_SECRET", "***REMOVED***")
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET 환경변수가 설정되지 않았습니다. Cloud Run env 또는 .env에 설정하세요.")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # PubMed / NCBI
