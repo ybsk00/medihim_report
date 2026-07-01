@@ -25,6 +25,7 @@ from api.admin import router as admin_router
 from api.vectors import router as vectors_router
 from api.webhook import router as webhook_router
 from api.health import router as health_router
+from api.dev_report import router as dev_report_router
 
 app = FastAPI(
     title="MediHim Ippeo API",
@@ -62,6 +63,7 @@ app.include_router(admin_router)
 app.include_router(vectors_router)
 app.include_router(webhook_router)
 app.include_router(health_router)
+app.include_router(dev_report_router)
 
 
 @app.get("/")
