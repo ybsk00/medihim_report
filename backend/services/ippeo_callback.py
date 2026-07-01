@@ -1,6 +1,7 @@
 """이뻐 앱에 리포트 완료 알림 전송 (report_ready webhook callback)"""
 
 import asyncio
+import copy
 import hmac
 import hashlib
 import json
@@ -55,7 +56,9 @@ async def notify_report_ready(consultation_id: str):
             "customer_name": c["customer_name"],
             "error_message": c.get("error_message") or "리포트 생성 실패",
         }
-        await _send_to_all(callback_urls, payload, IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET)
+        # 실패 콜백은 리포트가 없으므로 PROD/DEV 동일 payload
+        payloads = {label: payload for label, _ in callback_urls}
+        await _send_to_all(callback_urls, payloads, IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET)
         return
 
     # 리포트 조회
@@ -144,12 +147,49 @@ async def notify_report_ready(consultation_id: str):
                 },
             }
 
-    await _send_to_all(callback_urls, payload, IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET)
+    # PROD + DEV 모두에 json_url 추가 (사용자 지시 2026-07-01: 운영에도 JSON 적용).
+    # embed_url(아이프레임)은 그대로 유지하고 json_url을 형제 키로 추가 = 가산적 변경.
+    # ⚠️ embed_url 절대 제거 금지 원칙은 유지. 콜백 키/URL/status는 불변, json_url만 추가.
+    augmented_payload = _build_json_payload(payload, FRONTEND_URL)
+    payloads = {label: augmented_payload for label, _ in callback_urls}
+    await _send_to_all(callback_urls, payloads, IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET)
 
 
-async def _send_to_all(urls: list[tuple[str, str]], payload: dict, api_key: str, secret: str):
-    """운영 + 개발 서버에 동시 전송 (각각 독립적으로 재시도)"""
-    tasks = [_send_callback(label, url, payload, api_key, secret) for label, url in urls]
+# DEV json_url 언어 매핑 (리포트 키별 제공 언어)
+_DEV_JSON_LANGS = {
+    "patient_report": ["ja", "ko"],   # R4 고객용
+    "doctor_report": ["ko"],          # R3 병원용 (한국어)
+    "pre_consultation_report": ["ko"],  # R1 (평소 미생성)
+    "medical_report": ["ko"],         # R2 (평소 미생성)
+}
+
+
+def _build_json_payload(base_payload: dict, frontend_url: str) -> dict:
+    """기존 payload에 리포트별 json_url만 추가 (PROD/DEV 공통).
+
+    embed_url(아이프레임)은 그대로 두고 json_url을 형제 키로 붙인다.
+    json_url은 embed_url과 동일한 report_token(폴백 승계 토큰 포함)을 사용한다.
+    2026-07-01 사용자 지시로 운영(PROD) 콜백에도 동일 적용.
+    """
+    dev = copy.deepcopy(base_payload)
+    json_base = f"{frontend_url}/api/dev/report"
+    for key, langs in _DEV_JSON_LANGS.items():
+        item = dev.get(key)
+        if isinstance(item, dict) and item.get("report_token"):
+            tok = item["report_token"]
+            item["json_url"] = {lg: f"{json_base}/{lg}/{tok}.json" for lg in langs}
+    return dev
+
+
+async def _send_to_all(urls: list[tuple[str, str]], payloads: dict, api_key: str, secret: str):
+    """운영 + 개발 서버에 동시 전송 (각각 독립적으로 재시도).
+
+    payloads: {label: payload} — 라벨(PROD/DEV)별로 다른 payload 전송 가능.
+    """
+    tasks = [
+        _send_callback(label, url, payloads[label], api_key, secret)
+        for label, url in urls
+    ]
     await asyncio.gather(*tasks, return_exceptions=True)
 
 
