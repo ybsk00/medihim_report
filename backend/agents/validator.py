@@ -4,6 +4,8 @@ from services.gemini_client import generate_json, safe_parse_json
 SYSTEM_INSTRUCTION = """당신은 의료 상담 분류 검증 전문가입니다.
 분류 에이전트의 결과를 검증하여 최종 분류를 확정하거나, 관리자 검토가 필요한 경우 unclassified로 플래그합니다.
 
+분류는 피부과(dermatology), 성형외과(plastic_surgery), 치과(dentistry) 중 하나입니다.
+
 검증 기준:
 - 신뢰도 0.8 이상 + 명확 키워드 매칭 → 확정
 - 경계 시술이거나 신뢰도 0.8 미만 → 재검토
@@ -46,7 +48,7 @@ async def validate_classification(
 
 JSON 형식:
 {{
-    "classification": "dermatology" 또는 "plastic_surgery" 또는 "unclassified",
+    "classification": "dermatology" 또는 "plastic_surgery" 또는 "dentistry" 또는 "unclassified",
     "confidence": 0.0~1.0,
     "reason": "검증 근거 설명",
     "validated": true 또는 false
