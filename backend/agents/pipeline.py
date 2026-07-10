@@ -22,7 +22,12 @@ logger = logging.getLogger(__name__)
 
 def _build_fallback_r4(customer_name: str, classification: str) -> dict:
     """R4 환자용 폴백 리포트 (일본어, 10섹션 구조 유지)"""
-    category_ja = "皮膚科" if classification == "dermatology" else "美容整形"
+    if classification == "dermatology":
+        category_ja = "皮膚科"
+    elif classification == "dentistry":
+        category_ja = "歯科"
+    else:
+        category_ja = "美容整形"
     today = datetime.now(timezone(timedelta(hours=9))).strftime("%Y年%m月%d日")
 
     return {
@@ -87,7 +92,12 @@ def _build_fallback_r4(customer_name: str, classification: str) -> dict:
 
 def _build_fallback_r4_ko(customer_name: str, classification: str) -> dict:
     """R4 환자용 폴백 리포트 (한국어 번역본, 10섹션 구조 유지)"""
-    category_ko = "피부과" if classification == "dermatology" else "미용성형"
+    if classification == "dermatology":
+        category_ko = "피부과"
+    elif classification == "dentistry":
+        category_ko = "치과"
+    else:
+        category_ko = "미용성형"
     today = datetime.now(timezone(timedelta(hours=9))).strftime("%Y년 %m월 %d일")
 
     return {
@@ -153,7 +163,12 @@ def _build_fallback_r4_ko(customer_name: str, classification: str) -> dict:
 
 def _build_fallback_r3(customer_name: str, classification: str, consultation_round: int = 3) -> dict:
     """R3 병원용 폴백 리포트 (한국어, 6섹션)"""
-    category_ko = "피부과" if classification == "dermatology" else "성형외과"
+    if classification == "dermatology":
+        category_ko = "피부과"
+    elif classification == "dentistry":
+        category_ko = "치과"
+    else:
+        category_ko = "성형외과"
     role_label = "의사" if consultation_round == 2 else "상담실장"
     today = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
 

@@ -78,6 +78,8 @@ async def write_report(
     category_note = ""
     if classification == "plastic_surgery":
         category_note = "整形外科の相談です。構造的なアプローチを中心に記述してください。"
+    elif classification == "dentistry":
+        category_note = "歯科の相談です。治療ステップ・通院回数・材料の選択肢（インプラント/根管治療/セラミック/矯正/ホワイトニング等）を中心に記述してください。"
     else:
         category_note = "皮膚科の相談です。治療プロトコルを中心に記述してください。"
 

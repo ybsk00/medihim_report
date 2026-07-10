@@ -57,7 +57,12 @@ async def write_r3_report(
     if not rag_context:
         rag_context = "※참고자료 없음. 상담 내용만 기반으로 작성하세요."
 
-    category_label = "성형외과" if classification == "plastic_surgery" else "피부과"
+    if classification == "plastic_surgery":
+        category_label = "성형외과"
+    elif classification == "dentistry":
+        category_label = "치과"
+    else:
+        category_label = "피부과"
     role_label = "의사" if consultation_round == 2 else "상담실장"
 
     admin_direction_section = ""
