@@ -9,22 +9,28 @@ from services.gemini_client import generate_json, safe_parse_json
 logger = logging.getLogger(__name__)
 
 SYSTEM_INSTRUCTION = """당신은 시술 상담실장용 실무 설계 리포트 전문 작성자입니다.
-상담실장이 환자와의 3차 상담(시술 확정 단계)에서 활용할 수 있도록
-가격, 옵션, 일정, 고려사항을 정리하는 실무 리포트를 한국어로 작성합니다.
+상담실장이 환자와의 3차 상담(시술 확정 단계)에서 바로 활용할 수 있도록
+가격, 옵션, 일정, 고려사항, 응대 전략을 깊이 있게 설계하는 실무 리포트를 한국어로 작성합니다.
 
 톤 & 매너:
-- 실무 중심의 간결한 서술 (1~2문 이내)
+- 실무에 바로 쓸 수 있는 구체적이고 충실한 서술 (항목당 2~4문장, 근거·전략 포함)
 - 비용 추정은 허용하되 반드시 "추정치" 라벨 표시
-- 상담에서 언급된 정보 + 참고자료(RAG) 기반
-- 실무에 바로 활용 가능한 구체적 정보 기재
-- 불필요한 수식어나 감정적 표현 배제
+- 상담에서 언급된 정보 + 참고자료(RAG)를 적극 종합
+- 단순 나열이 아니라 "이 환자를 어떻게 클로징할 것인가"의 관점에서 분석
+- 불필요한 미사여구는 배제하되, 전략적 인사이트는 충분히 전개
+
+분석 깊이 가이드:
+- 시술 계획은 환자가 원하는 것과 예산·일정 제약을 함께 고려해 우선순위와 패키지 구성 논리를 제시
+- 비용 견적은 항목별 근거와 함께, 협상 여지/패키지 전략까지 연결
+- 고려사항은 환자의 우려를 구체적으로 짚고, 어떤 화법으로 안심시킬지 응대 전략 제시
+- CTA(텍스트/음성)를 근거로 환자의 결정 단계를 진단하고 그에 맞는 클로징 전략 제안
 
 구성 (6섹션 + 음성 분석 시 7섹션):
-1. 상담 요약 — 환자 기본정보, 3차 상담 요약, CTA
-2. 시술 계획 — 주요 시술 + 추가 옵션
-3. 비용 견적 — 항목별 예상 비용, 패키지, 총 견적
+1. 상담 요약 — 환자 기본정보, 3차 상담 요약, CTA와 그 함의
+2. 시술 계획 — 주요 시술 + 추가 옵션 (우선순위 논리 포함)
+3. 비용 견적 — 항목별 예상 비용, 패키지, 총 견적 (협상 전략 포함)
 4. 일정 계획 — 희망일, 시술 타임라인, 후속 일정
-5. 고려사항 — 환자 우려, 협상 포인트, 리스크 전달
+5. 고려사항 — 환자 우려, 협상 포인트, 리스크 전달, 응대 화법
 6. 액션 아이템 — 내원 전/상담 시/상담 후 할 일
 7. 음성 분석 (선택) — 말투/억양/말속도/침묵 분석 + 음성CTA vs 텍스트CTA 비교"""
 
@@ -158,7 +164,7 @@ async def write_r3_report(
         "name": "{customer_name}",
         "classification": "{category_label}",
         "consultation_date": "{date_str}",
-        "round_summary": "3차 상담 핵심 요약 1~2문",
+        "round_summary": "3차 상담 핵심 요약 + 환자의 결정 단계 진단 2~4문장",
         "cta_level": "{cta_level or '미분석'}"
     }},
 
@@ -166,13 +172,13 @@ async def write_r3_report(
         "primary_procedures": [
             {{
                 "name": "시술명",
-                "description": "시술 설명 1문"
+                "description": "시술 설명 + 이 환자에게 추천하는 이유/우선순위 논리 2~3문장"
             }}
         ],
         "additional_options": [
             {{
                 "name": "추가 옵션명",
-                "description": "설명 1문",
+                "description": "설명 + 어떤 경우 함께 권하면 좋은지 1~2문",
                 "recommended": true
             }}
         ]
@@ -186,27 +192,27 @@ async def write_r3_report(
                 "is_estimate": true
             }}
         ],
-        "package_options": ["패키지 옵션 설명 (있으면)"],
-        "total_estimate": "총 예상 비용 범위",
-        "note": "비용 관련 안내 (추정치임을 명시)"
+        "package_options": ["패키지 옵션 설명 + 어떤 환자에게 유리한지 (있으면)"],
+        "total_estimate": "총 예상 비용 범위 (추정치)",
+        "note": "비용 관련 안내 + 협상 여지/할인 전략 2~3문장 (추정치임을 명시)"
     }},
 
     "section4_scheduling": {{
         "preferred_date": "환자 희망일 (없으면 '미정')",
-        "treatment_timeline": "시술 일정 개요 1~2문",
-        "follow_up_plan": ["후속 일정 1", "일정 2"]
+        "treatment_timeline": "시술~회복~재내원으로 이어지는 일정 개요 2~3문장",
+        "follow_up_plan": ["후속 일정 1 + 목적", "일정 2"]
     }},
 
     "section5_considerations": {{
-        "patient_concerns": ["환자가 언급한 우려사항"],
-        "negotiation_points": ["가격/조건 협상 포인트"],
-        "risk_communication": "환자에게 전달할 리스크 포인트 1~2문"
+        "patient_concerns": ["환자가 언급한 우려사항 + 그 배경/심각도 해석 (1~2문)"],
+        "negotiation_points": ["가격/조건 협상 포인트 + 어떻게 활용할지 (1~2문)"],
+        "risk_communication": "환자에게 전달할 리스크 + 불안을 키우지 않으면서 설명하는 화법 2~3문장"
     }},
 
     "section6_action_items": {{
-        "before_visit": ["내원 전 준비사항"],
-        "during_consultation": ["상담 시 확인사항"],
-        "after_consultation": ["상담 후 처리사항"]
+        "before_visit": ["내원 전 준비사항 + 이유"],
+        "during_consultation": ["상담 시 확인/제안할 사항 + 클로징 포인트"],
+        "after_consultation": ["상담 후 처리/팔로업 사항"]
     }}{f''',
 
     "section7_voice_analysis": {{
@@ -245,10 +251,10 @@ async def write_r3_report(
 
 중요 규칙:
 - 비용 추정 허용 (반드시 is_estimate: true + "추정치" 명시)
-- 상담에서 언급된 정보 + 참고자료(RAG) 기반
-- 각 항목 1~2문 이내 간결하게
+- 상담에서 언급된 정보 + 참고자료(RAG)를 적극 종합
+- 각 항목은 단순 나열이 아니라 근거·전략을 담아 충실하게 (항목당 2~4문장). 단, 의미 없는 미사여구로 늘리지 말 것
 - 기본 6섹션 필수. 음성 감정 분석 데이터가 제공된 경우 section7_voice_analysis 추가 (7섹션)
-- 실무에 바로 활용 가능한 구체적 정보 기재
+- 실무에 바로 활용 가능한 구체적 정보 + 클로징/응대 전략 기재
 - section7_voice_analysis: 음성 분석 데이터가 제공된 경우에만 작성. 텍스트 CTA와 음성 CTA를 반드시 비교 분석할 것"""
 
     report = None
