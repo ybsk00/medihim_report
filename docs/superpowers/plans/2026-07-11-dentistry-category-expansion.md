@@ -782,6 +782,8 @@ SELECT count(*) FROM classification_keywords WHERE category='dentistry';  -- 16 
 
 - [ ] **Step 3: 치과 벡터 rows를 브랜치→운영 복사 (재임베딩 없음)**
 
+> 변경(2026-07-11 사용자 지시): 치과 전체 + **피부/성형 추가분**(retmax 40 상향으로 브랜치에만 생성된 약 1,200건, 운영에 없는 PMID 기준)도 함께 운영에 복사한다.
+
 브랜치에서 치과 FAQ를 조회하여 운영에 삽입. `mcp__supabase__execute_sql`로 브랜치에서 배치 export(JSON) 후 운영에 insert하거나, 브랜치가 같은 조직이면 `postgres_fdw`/덤프. 간단한 경로:
 - 브랜치에서 `SELECT category, question, answer, procedure_name, youtube_video_id, youtube_title, youtube_url, embedding FROM faq_vectors WHERE category='dentistry'` 결과를 배치로 운영에 INSERT.
 - 페이지네이션(1000행) 준수. 임베딩 벡터 그대로 복사(재계산 불필요).
