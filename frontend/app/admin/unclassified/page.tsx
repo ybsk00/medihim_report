@@ -8,7 +8,7 @@ export default function UnclassifiedPage() {
   const [loading, setLoading] = useState(true);
   const [modalData, setModalData] = useState<UnclassifiedItem | null>(null);
   const [showFull, setShowFull] = useState(false);
-  const [selected, setSelected] = useState<"dermatology" | "plastic_surgery" | null>(null);
+  const [selected, setSelected] = useState<"dermatology" | "plastic_surgery" | "dentistry" | null>(null);
   const [classifying, setClassifying] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
@@ -227,7 +227,7 @@ export default function UnclassifiedPage() {
             {/* Classification Buttons */}
             <div>
               <p className="text-sm text-slate-500 mb-3">분류 선택:</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <button
                   onClick={() => setSelected("dermatology")}
                   className={`p-4 rounded-xl border-2 text-center transition-all ${
@@ -249,6 +249,17 @@ export default function UnclassifiedPage() {
                 >
                   <span className="text-2xl">🏥</span>
                   <p className="text-sm font-bold mt-1">성형외과</p>
+                </button>
+                <button
+                  onClick={() => setSelected("dentistry")}
+                  className={`p-4 rounded-xl border-2 text-center transition-all ${
+                    selected === "dentistry"
+                      ? "border-primary bg-primary/5"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <span className="text-2xl">🦷</span>
+                  <p className="text-sm font-bold mt-1">치과</p>
                 </button>
               </div>
             </div>

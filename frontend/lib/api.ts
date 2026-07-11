@@ -46,7 +46,7 @@ export interface Consultation {
   translated_text: string | null;
   speaker_segments: { speaker: string; text: string }[] | null;
   customer_utterances: string | null;
-  classification: "dermatology" | "plastic_surgery" | "unclassified" | null;
+  classification: "dermatology" | "plastic_surgery" | "dentistry" | "unclassified" | null;
   classification_confidence: number | null;
   classification_reason: string | null;
   is_manually_classified: boolean;

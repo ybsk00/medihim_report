@@ -6,6 +6,7 @@ import { vectorAPI, type VectorItem } from "@/lib/api";
 const CATEGORY_MAP: Record<string, string> = {
   dermatology: "피부과",
   plastic_surgery: "성형외과",
+  dentistry: "치과",
 };
 
 export default function VectorsPage() {
@@ -120,6 +121,7 @@ export default function VectorsPage() {
               <option value="all">카테고리 전체</option>
               <option value="dermatology">피부과</option>
               <option value="plastic_surgery">성형외과</option>
+              <option value="dentistry">치과</option>
             </select>
           </div>
           {selected.size > 0 && (
@@ -193,6 +195,8 @@ export default function VectorsPage() {
                             className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                               item.category === "dermatology"
                                 ? "bg-blue-100 text-blue-800"
+                                : item.category === "dentistry"
+                                ? "bg-emerald-100 text-emerald-800"
                                 : "bg-purple-100 text-purple-800"
                             }`}
                           >

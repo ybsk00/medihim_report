@@ -13,6 +13,7 @@ const PROCESSING_STATUSES = new Set([
 const CLASSIFICATION_MAP: Record<string, string> = {
   plastic_surgery: "🏥 성형외과",
   dermatology: "💊 피부과",
+  dentistry: "🦷 치과",
   unclassified: "⚠️ 미분류",
 };
 
@@ -251,6 +252,7 @@ export default function ConsultationsPage() {
               <option value="all">분류 전체</option>
               <option value="plastic_surgery">🏥 성형외과</option>
               <option value="dermatology">💊 피부과</option>
+              <option value="dentistry">🦷 치과</option>
               <option value="unclassified">⚠️ 미분류</option>
             </select>
             <select

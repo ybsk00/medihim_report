@@ -8,6 +8,7 @@ import { consultationAPI, type Consultation } from "@/lib/api";
 const CLASSIFICATION_MAP: Record<string, string> = {
   plastic_surgery: "🏥 성형외과",
   dermatology: "💊 피부과",
+  dentistry: "🦷 치과",
   unclassified: "⚠️ 미분류",
 };
 

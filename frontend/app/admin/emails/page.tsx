@@ -243,6 +243,8 @@ export default function EmailsPage() {
                                 : consultation?.classification ===
                                   "plastic_surgery"
                                 ? "bg-purple-100 text-purple-800"
+                                : consultation?.classification === "dentistry"
+                                ? "bg-emerald-100 text-emerald-800"
                                 : "bg-slate-100 text-slate-600"
                             }`}
                           >
@@ -251,6 +253,8 @@ export default function EmailsPage() {
                               : consultation?.classification ===
                                 "plastic_surgery"
                               ? "성형외과"
+                              : consultation?.classification === "dentistry"
+                              ? "치과"
                               : "미분류"}
                           </span>
                         </td>

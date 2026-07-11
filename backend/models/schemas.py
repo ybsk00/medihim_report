@@ -9,6 +9,7 @@ from enum import Enum
 class Classification(str, Enum):
     DERMATOLOGY = "dermatology"
     PLASTIC_SURGERY = "plastic_surgery"
+    DENTISTRY = "dentistry"
     UNCLASSIFIED = "unclassified"
 
 
