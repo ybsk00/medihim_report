@@ -30,9 +30,19 @@ def test_r3_category_label_has_dentistry_branch():
     assert "dentistry" in src and "치과" in src, "R3 writer에 치과 라벨 분기가 없음"
 
 
+def test_dentistry_queries_defined():
+    from scripts import build_pubmed_vectors as bpv
+    assert hasattr(bpv, "DENTISTRY_QUERIES"), "DENTISTRY_QUERIES 미정의"
+    assert len(bpv.DENTISTRY_QUERIES) >= 36, f"치과 쿼리 부족: {len(bpv.DENTISTRY_QUERIES)}"
+    assert all(q["category"] == "dentistry" for q in bpv.DENTISTRY_QUERIES)
+    assert all(q in bpv.ALL_QUERIES for q in bpv.DENTISTRY_QUERIES), "ALL_QUERIES에 치과 미포함"
+    assert bpv.CATEGORY_KR.get("dentistry"), "CATEGORY_KR에 dentistry 라벨 없음"
+
+
 if __name__ == "__main__":
     test_classifier_system_mentions_dentistry()
     test_validator_system_mentions_dentistry()
     test_r4_category_note_has_dentistry_branch()
     test_r3_category_label_has_dentistry_branch()
+    test_dentistry_queries_defined()
     print("OK: dentistry prompt checks passed")

@@ -312,7 +312,53 @@ PLASTIC_SURGERY_QUERIES = [
     },
 ]
 
-ALL_QUERIES = DERMATOLOGY_QUERIES + PLASTIC_SURGERY_QUERIES
+DENTISTRY_QUERIES = [
+    # --- 임플란트 ---
+    {"name": "임플란트(생존율)", "query": "(dental implant[Title/Abstract]) AND (survival rate OR success rate[Title/Abstract]) AND (long-term OR follow-up[Title/Abstract])", "procedure": "임플란트", "category": "dentistry"},
+    {"name": "임플란트(골유착)", "query": "(dental implant[Title/Abstract]) AND (osseointegration[Title/Abstract]) AND (outcome OR success[Title/Abstract])", "procedure": "임플란트", "category": "dentistry"},
+    {"name": "임플란트(즉시식립)", "query": "(immediate loading OR immediate placement[Title/Abstract]) AND (dental implant[Title/Abstract]) AND (outcome OR survival[Title/Abstract])", "procedure": "임플란트(즉시식립)", "category": "dentistry"},
+    {"name": "임플란트(올온4)", "query": "(All-on-4 OR all on four[Title/Abstract]) AND (implant[Title/Abstract]) AND (outcome OR satisfaction[Title/Abstract])", "procedure": "임플란트(올온4)", "category": "dentistry"},
+    {"name": "상악동거상술", "query": "(sinus lift OR sinus augmentation[Title/Abstract]) AND (dental implant[Title/Abstract]) AND (outcome OR success[Title/Abstract])", "procedure": "상악동거상술", "category": "dentistry"},
+    {"name": "임플란트(주위염)", "query": "(peri-implantitis[Title/Abstract]) AND (treatment OR prevalence OR risk factor[Title/Abstract])", "procedure": "임플란트주위염", "category": "dentistry"},
+    {"name": "임플란트(심미/전치부)", "query": "(anterior dental implant OR esthetic implant[Title/Abstract]) AND (outcome OR satisfaction OR pink esthetic[Title/Abstract])", "procedure": "전치부 임플란트", "category": "dentistry"},
+    # --- 교정 ---
+    {"name": "투명교정(인비절라인)", "query": "(clear aligner OR Invisalign[Title/Abstract]) AND (efficacy OR outcome OR satisfaction[Title/Abstract])", "procedure": "투명교정", "category": "dentistry"},
+    {"name": "교정(발치)", "query": "(orthodontic treatment[Title/Abstract]) AND (extraction[Title/Abstract]) AND (outcome OR profile change[Title/Abstract])", "procedure": "발치교정", "category": "dentistry"},
+    {"name": "설측교정", "query": "(lingual orthodontics[Title/Abstract]) AND (efficacy OR outcome OR satisfaction[Title/Abstract])", "procedure": "설측교정", "category": "dentistry"},
+    {"name": "자가결찰교정", "query": "(self-ligating bracket[Title/Abstract]) AND (efficacy OR treatment time OR outcome[Title/Abstract])", "procedure": "자가결찰교정", "category": "dentistry"},
+    {"name": "교정용미니스크류(TAD)", "query": "(temporary anchorage device OR miniscrew OR TAD[Title/Abstract]) AND (orthodontic[Title/Abstract]) AND (success OR outcome[Title/Abstract])", "procedure": "교정미니스크류", "category": "dentistry"},
+    {"name": "성인교정", "query": "(adult orthodontic treatment[Title/Abstract]) AND (outcome OR satisfaction OR quality of life[Title/Abstract])", "procedure": "성인교정", "category": "dentistry"},
+    {"name": "부정교합", "query": "(malocclusion[Title/Abstract]) AND (orthodontic treatment[Title/Abstract]) AND (outcome OR quality of life[Title/Abstract])", "procedure": "부정교합교정", "category": "dentistry"},
+    # --- 심미(라미네이트/미백/크라운) ---
+    {"name": "라미네이트(베니어)", "query": "(porcelain veneer OR laminate veneer[Title/Abstract]) AND (survival OR longevity OR satisfaction[Title/Abstract])", "procedure": "라미네이트", "category": "dentistry"},
+    {"name": "세라믹크라운", "query": "(ceramic crown OR zirconia crown[Title/Abstract]) AND (survival OR success OR longevity[Title/Abstract])", "procedure": "세라믹크라운", "category": "dentistry"},
+    {"name": "치아미백", "query": "(tooth whitening OR dental bleaching[Title/Abstract]) AND (efficacy OR color change OR sensitivity[Title/Abstract])", "procedure": "치아미백", "category": "dentistry"},
+    {"name": "디지털스마일디자인", "query": "(digital smile design[Title/Abstract]) AND (esthetic OR outcome OR satisfaction[Title/Abstract])", "procedure": "디지털스마일디자인", "category": "dentistry"},
+    {"name": "심미수복(복합레진)", "query": "(composite resin restoration[Title/Abstract]) AND (anterior OR esthetic[Title/Abstract]) AND (longevity OR outcome[Title/Abstract])", "procedure": "심미수복", "category": "dentistry"},
+    {"name": "치은성형(잇몸심미)", "query": "(gingival contouring OR crown lengthening OR gummy smile[Title/Abstract]) AND (esthetic OR outcome[Title/Abstract])", "procedure": "잇몸성형", "category": "dentistry"},
+    # --- 보존(신경치료/충치) ---
+    {"name": "신경치료(근관)", "query": "(root canal treatment OR endodontic treatment[Title/Abstract]) AND (success rate OR outcome[Title/Abstract])", "procedure": "신경치료", "category": "dentistry"},
+    {"name": "재신경치료", "query": "(endodontic retreatment[Title/Abstract]) AND (success OR outcome OR prognosis[Title/Abstract])", "procedure": "재신경치료", "category": "dentistry"},
+    {"name": "치근단수술", "query": "(apicoectomy OR endodontic microsurgery[Title/Abstract]) AND (success OR outcome[Title/Abstract])", "procedure": "치근단수술", "category": "dentistry"},
+    {"name": "충치(복합레진충전)", "query": "(dental caries[Title/Abstract]) AND (composite restoration[Title/Abstract]) AND (longevity OR survival[Title/Abstract])", "procedure": "충치치료", "category": "dentistry"},
+    {"name": "인레이/온레이", "query": "(inlay OR onlay[Title/Abstract]) AND (ceramic OR composite[Title/Abstract]) AND (survival OR longevity[Title/Abstract])", "procedure": "인레이온레이", "category": "dentistry"},
+    {"name": "치수보호(MTA)", "query": "(pulp capping OR MTA[Title/Abstract]) AND (vital pulp therapy[Title/Abstract]) AND (success OR outcome[Title/Abstract])", "procedure": "치수치료", "category": "dentistry"},
+    # --- 치주 ---
+    {"name": "치주치료(스케일링/루트플레닝)", "query": "(scaling and root planing[Title/Abstract]) AND (periodontitis[Title/Abstract]) AND (outcome OR clinical attachment[Title/Abstract])", "procedure": "치주치료", "category": "dentistry"},
+    {"name": "치주수술", "query": "(periodontal surgery OR flap surgery[Title/Abstract]) AND (outcome OR pocket depth[Title/Abstract])", "procedure": "치주수술", "category": "dentistry"},
+    {"name": "잇몸이식", "query": "(gingival graft OR connective tissue graft[Title/Abstract]) AND (recession OR root coverage[Title/Abstract])", "procedure": "잇몸이식", "category": "dentistry"},
+    {"name": "치주조직재생(GTR)", "query": "(guided tissue regeneration OR periodontal regeneration[Title/Abstract]) AND (outcome OR bone fill[Title/Abstract])", "procedure": "치주재생", "category": "dentistry"},
+    {"name": "치주-전신질환", "query": "(periodontitis[Title/Abstract]) AND (diabetes OR cardiovascular[Title/Abstract]) AND (association OR risk[Title/Abstract])", "procedure": "치주건강", "category": "dentistry"},
+    # --- 구강외과 ---
+    {"name": "사랑니발치(매복)", "query": "(impacted third molar OR wisdom tooth extraction[Title/Abstract]) AND (complication OR recovery OR outcome[Title/Abstract])", "procedure": "사랑니발치", "category": "dentistry"},
+    {"name": "발치후치유", "query": "(tooth extraction[Title/Abstract]) AND (socket healing OR dry socket[Title/Abstract]) AND (outcome OR prevention[Title/Abstract])", "procedure": "발치", "category": "dentistry"},
+    {"name": "치조골이식(GBR)", "query": "(guided bone regeneration OR alveolar ridge augmentation[Title/Abstract]) AND (outcome OR bone gain[Title/Abstract])", "procedure": "골이식", "category": "dentistry"},
+    {"name": "턱관절장애(TMD)", "query": "(temporomandibular disorder OR TMJ[Title/Abstract]) AND (treatment OR splint[Title/Abstract]) AND (outcome[Title/Abstract])", "procedure": "턱관절치료", "category": "dentistry"},
+    {"name": "치성감염", "query": "(odontogenic infection[Title/Abstract]) AND (management OR antibiotic OR outcome[Title/Abstract])", "procedure": "치성감염", "category": "dentistry"},
+    {"name": "발치후임플란트(치조제보존)", "query": "(socket preservation OR ridge preservation[Title/Abstract]) AND (implant[Title/Abstract]) AND (outcome[Title/Abstract])", "procedure": "치조제보존", "category": "dentistry"},
+]
+
+ALL_QUERIES = DERMATOLOGY_QUERIES + PLASTIC_SURGERY_QUERIES + DENTISTRY_QUERIES
 
 
 # ============================================
@@ -349,7 +395,7 @@ def fetch_pubmed_articles():
             handle = Entrez.esearch(
                 db="pubmed",
                 term=q["query"],
-                retmax=30,
+                retmax=40,
                 sort="relevance",
                 mindate="2015",
                 maxdate="2025",
@@ -484,6 +530,15 @@ FAQ_PROMPT_TEMPLATE = """아래는 의료 논문의 제목과 초록입니다. �
    - rhinoplasty → 코성형
    - blepharoplasty → 눈성형/쌍꺼풀수술
    - liposuction → 지방흡입
+   - dental implant → 임플란트
+   - root canal treatment → 신경치료
+   - clear aligner / Invisalign → 투명교정
+   - porcelain veneer / laminate veneer → 라미네이트
+   - ceramic crown / zirconia crown → 세라믹 크라운
+   - tooth whitening / bleaching → 치아미백
+   - scaling and root planing → 치주치료(스케일링)
+   - impacted third molar → 매복 사랑니
+   - temporomandibular disorder / TMJ → 턱관절장애
    - etc.
 6. 답변은 2~3문장으로 간결하되 핵심 수치는 빠짐없이 포함
 
@@ -497,6 +552,7 @@ FAQ_PROMPT_TEMPLATE = """아래는 의료 논문의 제목과 초록입니다. �
 CATEGORY_KR = {
     "dermatology": "피부과 미용시술",
     "plastic_surgery": "성형외과 수술",
+    "dentistry": "치과 진료",
 }
 
 
