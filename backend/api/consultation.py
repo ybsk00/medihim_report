@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query
 from typing import Optional
 from models.schemas import ConsultationCreate, ConsultationBulkCreate, ClassifyRequest, CTAUpdateRequest, GenerateReportsRequest, ConsultationUpdateRequest
 from services.supabase_client import get_supabase
+from services.task_queue import enqueue_pipeline_task
 from agents.pipeline import run_pipeline, resume_pipeline
 
 logger = logging.getLogger(__name__)
@@ -109,9 +110,15 @@ async def generate_reports(data: GenerateReportsRequest, background_tasks: Backg
                 "reason": "이미 처리 중이거나 완료된 상담입니다",
             })
 
-    # 병렬 실행 (최대 5건 동시)
+    # Cloud Tasks로 건별 실행 (동시 처리는 큐 설정 max-concurrent-dispatches로 제한).
+    # 발행 실패/로컬 개발 시에만 기존 BackgroundTasks 병렬 실행으로 폴백.
     if triggered_ids:
-        background_tasks.add_task(_run_pipelines_parallel, triggered_ids, 5)
+        fallback_ids = []
+        for cid in triggered_ids:
+            if not await enqueue_pipeline_task(cid):
+                fallback_ids.append(cid)
+        if fallback_ids:
+            background_tasks.add_task(_run_pipelines_parallel, fallback_ids, 5)
 
     return {
         "triggered": len(triggered_ids),

@@ -19,6 +19,15 @@ NCBI_API_KEY = os.getenv("NCBI_API_KEY", "")
 NCBI_EMAIL = os.getenv("NCBI_EMAIL", "bsyoo1974@gamil.com")
 NCBI_TOOL = os.getenv("NCBI_TOOL", "ADC-GenAI-Platform")
 
+# Cloud Tasks — 파이프라인을 요청 수명 안에서 실행 (services/task_queue.py)
+# 미설정(로컬 개발) 시 기존 BackgroundTasks 방식으로 폴백
+CLOUD_TASKS_ENABLED = os.getenv("CLOUD_TASKS_ENABLED", "").lower() in ("1", "true", "yes")
+GCP_PROJECT = os.getenv("GCP_PROJECT", "ipp0-medhim")
+CLOUD_TASKS_LOCATION = os.getenv("CLOUD_TASKS_LOCATION", "asia-northeast3")
+CLOUD_TASKS_QUEUE = os.getenv("CLOUD_TASKS_QUEUE", "report-pipeline")
+SELF_URL = os.getenv("SELF_URL", "")  # 태스크가 다시 호출할 이 백엔드의 URL
+INTERNAL_TASK_SECRET = os.getenv("INTERNAL_TASK_SECRET", "") or JWT_SECRET
+
 # 이뻐 앱 연동
 IPPEO_API_KEY = os.getenv("IPPEO_API_KEY", "")
 IPPEO_WEBHOOK_SECRET = os.getenv("IPPEO_WEBHOOK_SECRET", "")

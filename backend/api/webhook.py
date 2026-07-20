@@ -1,15 +1,17 @@
 """이뻐 앱 → AI 서버 Webhook 수신 API (v1.1 스펙)"""
 
+import hmac
 import logging
 import os
 import tempfile
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 
 from api.auth_webhook import verify_webhook, verify_api_key
 from models.schemas import IppeoConsultationRequest
 from services.supabase_client import get_supabase
+from services.task_queue import enqueue_pipeline_task
 
 logger = logging.getLogger(__name__)
 
@@ -189,16 +191,75 @@ async def receive_consultation(
     consultation_id = result.data[0]["id"]
     logger.info(f"[Webhook] Created consultation: {consultation_id}")
 
-    # 백그라운드에서 파이프라인 실행 (즉시 200 응답)
-    background_tasks.add_task(
-        _process_consultation_with_id, consultation_id, data.model_dump()
-    )
+    # Cloud Tasks로 파이프라인 실행 (즉시 200 응답).
+    # 태스크가 /internal/process를 호출해 요청 수명 안에서 처리 → 인스턴스 회수에 안전.
+    # 발행 실패/로컬 개발 시에만 기존 BackgroundTasks로 폴백.
+    enqueued = await enqueue_pipeline_task(consultation_id, data.model_dump())
+    if not enqueued:
+        background_tasks.add_task(
+            _process_consultation_with_id, consultation_id, data.model_dump()
+        )
 
     return {
         "success": True,
         "consultation_id": consultation_id,
         "message": "상담 데이터 수신 완료. 리포트 자동 생성을 시작합니다.",
     }
+
+
+@router.post("/internal/process")
+async def internal_process_task(request: Request):
+    """Cloud Tasks 전용 내부 엔드포인트 — 파이프라인을 요청 수명 안에서 동기 실행.
+
+    처리 실패 시에도 200을 반환한다(파이프라인이 report_failed를 저장하므로 재시도 무의미).
+    Cloud Tasks 재시도는 인스턴스 강제 종료로 응답 없이 끊긴 경우에만 일어난다.
+    """
+    from config import INTERNAL_TASK_SECRET
+
+    auth = request.headers.get("X-Internal-Auth", "")
+    if not INTERNAL_TASK_SECRET or not hmac.compare_digest(auth, INTERNAL_TASK_SECRET):
+        raise HTTPException(status_code=401, detail="유효하지 않은 내부 인증 토큰")
+
+    payload = await request.json()
+    consultation_id = payload.get("consultation_id")
+    if not consultation_id:
+        # 재시도해도 소용없는 잘못된 태스크 → 200으로 종결
+        return {"success": False, "message": "consultation_id 없음"}
+
+    db = get_supabase()
+    result = (
+        db.table("consultations")
+        .select("id, status")
+        .eq("id", consultation_id)
+        .execute()
+    )
+    if not result.data:
+        return {"success": False, "message": f"상담 없음: {consultation_id}"}
+
+    # 중복 배달(at-least-once) 방어: 이미 완료된 상담은 스킵
+    if result.data[0]["status"] in ("report_ready", "report_approved", "report_sent"):
+        return {"success": True, "message": "이미 완료된 상담 — 중복 태스크 스킵"}
+
+    logger.info(f"[TaskWorker] Pipeline start (in-request): {consultation_id}")
+
+    webhook_data = payload.get("webhook_data")
+    if webhook_data:
+        # 웹훅 경유: STT 다운로드/음성 STT 포함 전체 플로우 (내부에서 예외 처리됨)
+        await _process_consultation_with_id(consultation_id, webhook_data)
+    else:
+        # 관리자 재생성 등: DB에 원문이 이미 있는 상담
+        try:
+            from agents.pipeline import run_pipeline
+
+            await run_pipeline(consultation_id)
+        except Exception as e:
+            logger.error(f"[TaskWorker] Pipeline failed: {e}", exc_info=True)
+            db.table("consultations").update({
+                "status": "report_failed",
+                "error_message": str(e),
+            }).eq("id", consultation_id).execute()
+
+    return {"success": True, "consultation_id": consultation_id}
 
 
 @router.get("/status/{consultation_id}")
