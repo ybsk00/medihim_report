@@ -6,7 +6,7 @@ import google.generativeai as genai
 from googleapiclient.discovery import build
 from youtube_transcript_api import YouTubeTranscriptApi
 
-from config import YOUTUBE_API_KEY, GEMINI_API_KEY
+from config import YOUTUBE_API_KEY, GEMINI_API_KEY, GEMINI_MODEL
 from services.supabase_client import get_supabase
 
 
@@ -24,7 +24,7 @@ def _safe_print(msg: str):
 # 초기화
 # ============================================
 genai.configure(api_key=GEMINI_API_KEY)
-_llm = genai.GenerativeModel("gemini-2.5-flash")
+_llm = genai.GenerativeModel(GEMINI_MODEL)
 _embedding_model = "models/gemini-embedding-001"
 
 

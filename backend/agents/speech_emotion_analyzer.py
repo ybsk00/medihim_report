@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 import google.generativeai as genai
-from config import GEMINI_API_KEY
+from config import GEMINI_API_KEY, GEMINI_MODEL
 from services.gemini_client import safe_parse_json
 
 logger = logging.getLogger(__name__)
@@ -126,7 +126,7 @@ async def analyze_speech_emotion(audio_file_path: str) -> dict:
 
     # Gemini 멀티모달 호출
     model = genai.GenerativeModel(
-        "gemini-2.5-flash",
+        GEMINI_MODEL,
         system_instruction=SYSTEM_INSTRUCTION,
         generation_config=genai.GenerationConfig(
             response_mime_type="application/json",
@@ -249,7 +249,7 @@ async def stt_with_emotion(audio_file_path: str) -> dict:
 }"""
 
     model = genai.GenerativeModel(
-        "gemini-2.5-flash",
+        GEMINI_MODEL,
         system_instruction=SYSTEM_INSTRUCTION,
         generation_config=genai.GenerationConfig(
             response_mime_type="application/json",

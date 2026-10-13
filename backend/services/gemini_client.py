@@ -3,7 +3,7 @@ import json
 import logging
 import re
 import google.generativeai as genai
-from config import GEMINI_API_KEY
+from config import GEMINI_API_KEY, GEMINI_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ _RETRYABLE_ERRORS = ("429", "500", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE", "
 def get_model():
     global _model
     if _model is None:
-        _model = genai.GenerativeModel("gemini-2.5-flash")
+        _model = genai.GenerativeModel(GEMINI_MODEL)
     return _model
 
 
@@ -55,7 +55,7 @@ async def generate_text(prompt: str, system_instruction: str = "") -> str:
     model = get_model()
     if system_instruction:
         model = genai.GenerativeModel(
-            "gemini-2.5-flash",
+            GEMINI_MODEL,
             system_instruction=system_instruction,
         )
     response = await _retry_generate(model, prompt)
@@ -126,7 +126,7 @@ def safe_parse_json(text: str) -> dict | list:
 async def generate_json(prompt: str, system_instruction: str = "", max_retries: int = 3) -> str:
     """JSON 생성 + 파싱 검증. 파싱 실패 시 Gemini 재호출."""
     model = genai.GenerativeModel(
-        "gemini-2.5-flash",
+        GEMINI_MODEL,
         system_instruction=system_instruction,
         generation_config=genai.GenerationConfig(
             response_mime_type="application/json",
