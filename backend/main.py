@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 
 from fastapi import FastAPI
@@ -46,6 +47,8 @@ app.add_middleware(
         # 이뻐 앱 도메인
         "https://www.ippeo.io",
         "https://dev.ippeo.io",
+        # 추가 허용 도메인 (AWS 이관 등): EXTRA_CORS_ORIGINS="http://a:3003,https://b"
+        *[o.strip() for o in os.getenv("EXTRA_CORS_ORIGINS", "").split(",") if o.strip()],
     ],
     allow_credentials=True,
     allow_methods=["*"],
