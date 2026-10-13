@@ -7,7 +7,7 @@
 # (직접 호출 모드) NEXT_PUBLIC_API_URL=http://<backend>/api 만 지정 → 브라우저가 백엔드 직접 호출 (CORS 필요)
 #
 #   docker run -d -p 3003:3000 medihim-frontend
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -21,16 +21,16 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_TELEMETRY_DISABLED=1
 RUN npm run build && npm prune --omit=dev
 
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 ARG BACKEND_INTERNAL_URL
 ARG NEXT_PUBLIC_SITE_URL
-# next start가 next.config.ts를 다시 읽으므로(프록시 타임아웃 등) 실행 단계에도 값과 파일이 필요
+# next start가 next.config.mjs를 다시 읽으므로(프록시 타임아웃 등) 실행 단계에도 값과 파일이 필요
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     BACKEND_INTERNAL_URL=$BACKEND_INTERNAL_URL \
     NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
-COPY --from=build /app/package.json /app/next.config.ts ./
+COPY --from=build /app/package.json /app/next.config.mjs ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
