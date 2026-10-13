@@ -1,4 +1,20 @@
-"""이뻐 앱 Webhook 발송 서비스 — 리포트 완료/실패 알림"""
+"""이뻐 앱 Webhook 발송 서비스 — 리포트 완료/실패 알림
+
+⚠️ DEPRECATED — 사용 금지 (2026-06-28).
+이 모듈(send_report_ready_webhook / send_report_failed_webhook)은 더 이상
+어디에서도 호출되지 않는 죽은 코드(dead code)입니다.
+
+실제 이뻐 콜백은 services/ippeo_callback.py 의 notify_report_ready() 가
+담당합니다 (pipeline.py 에서 호출). 절대 이 모듈을 다시 연결하지 마세요.
+
+두 모듈의 페이로드 포맷이 서로 다르며, 이 모듈을 사용하면 이뻐 연동이 깨집니다:
+  - 이 모듈:        event/report_type 필드 있음, embed_url 쿼리 방식(?lang=ja),
+                    PROD 단일 전송, 의사 리포트 = R1
+  - ippeo_callback: event/report_type 필드 없음, embed_url 경로 방식(/patient/ja/{token}),
+                    PROD+DEV 동시 전송, 의사 리포트 = R3
+
+향후 정리 시 이 파일은 삭제 가능합니다.
+"""
 
 import asyncio
 import hmac
