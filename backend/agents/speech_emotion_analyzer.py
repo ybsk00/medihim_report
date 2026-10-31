@@ -3,6 +3,8 @@
 import asyncio
 import json
 import logging
+import os
+import httpx
 import google.generativeai as genai
 from config import GEMINI_API_KEY, GEMINI_MODEL
 from services.gemini_client import safe_parse_json
@@ -10,6 +12,72 @@ from services.gemini_client import safe_parse_json
 logger = logging.getLogger(__name__)
 
 genai.configure(api_key=GEMINI_API_KEY)
+
+# ── Gemini Files API (REST) ──
+# genai.upload_file/get_file/delete_file은 discovery 문서($discovery/rest?key=)를 먼저 조회하는데,
+# 신규 형식 키(AQ.…)는 이 엔드포인트에서 400(API_KEY_INVALID)이 난다. Files API 자체는 정상이므로
+# 업로드/조회/삭제만 REST로 직접 호출한다. 키는 헤더로 전달(에러 메시지에 키가 남지 않음).
+_FILES_BASE = "https://generativelanguage.googleapis.com"
+_AUDIO_MIME = {
+    ".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4",
+    ".ogg": "audio/ogg", ".flac": "audio/flac", ".aac": "audio/aac",
+}
+
+
+async def _upload_audio(path: str) -> dict:
+    """음성 파일 업로드 (resumable) → ACTIVE 될 때까지 대기한 file 리소스 반환"""
+    mime = _AUDIO_MIME.get(os.path.splitext(path)[1].lower(), "audio/mpeg")
+    with open(path, "rb") as f:
+        data = f.read()
+    headers = {"x-goog-api-key": GEMINI_API_KEY}
+    async with httpx.AsyncClient(timeout=300) as client:
+        start = await client.post(
+            f"{_FILES_BASE}/upload/v1beta/files",
+            headers={
+                **headers,
+                "X-Goog-Upload-Protocol": "resumable",
+                "X-Goog-Upload-Command": "start",
+                "X-Goog-Upload-Header-Content-Length": str(len(data)),
+                "X-Goog-Upload-Header-Content-Type": mime,
+            },
+            json={"file": {"display_name": os.path.basename(path)}},
+        )
+        start.raise_for_status()
+        upload_url = start.headers["x-goog-upload-url"]
+        res = await client.post(
+            upload_url,
+            headers={
+                **headers,
+                "X-Goog-Upload-Offset": "0",
+                "X-Goog-Upload-Command": "upload, finalize",
+            },
+            content=data,
+        )
+        res.raise_for_status()
+        file = res.json()["file"]
+
+        # 파일 처리 완료 대기
+        while file.get("state") == "PROCESSING":
+            await asyncio.sleep(2)
+            r = await client.get(f"{_FILES_BASE}/v1beta/{file['name']}", headers=headers)
+            r.raise_for_status()
+            file = r.json()
+
+    if file.get("state") == "FAILED":
+        raise ValueError(f"Audio file processing failed: {file.get('state')}")
+    return file
+
+
+async def _delete_file(name: str) -> None:
+    async with httpx.AsyncClient(timeout=30) as client:
+        await client.delete(f"{_FILES_BASE}/v1beta/{name}", headers={"x-goog-api-key": GEMINI_API_KEY})
+
+
+def _file_part(file: dict):
+    return genai.protos.Part(
+        file_data=genai.protos.FileData(mime_type=file["mimeType"], file_uri=file["uri"])
+    )
+
 
 SYSTEM_INSTRUCTION = """あなたは音声分析の専門家です。医療カウンセリングの音声を分析し、
 お客様の感情状態・話し方の特徴を構造化して報告してください。
@@ -45,21 +113,9 @@ async def analyze_speech_emotion(audio_file_path: str) -> dict:
     """
     logger.info(f"[SpeechEmotion] Uploading audio file: {audio_file_path}")
 
-    # Gemini Files API에 음성 파일 업로드
-    uploaded_file = await asyncio.to_thread(
-        genai.upload_file, audio_file_path
-    )
-    logger.info(f"[SpeechEmotion] File uploaded: {uploaded_file.name}")
-
-    # 파일 처리 완료 대기
-    while uploaded_file.state.name == "PROCESSING":
-        await asyncio.sleep(2)
-        uploaded_file = await asyncio.to_thread(
-            genai.get_file, uploaded_file.name
-        )
-
-    if uploaded_file.state.name == "FAILED":
-        raise ValueError(f"Audio file processing failed: {uploaded_file.state.name}")
+    # Gemini Files API에 음성 파일 업로드 (처리 완료까지 대기)
+    uploaded_file = await _upload_audio(audio_file_path)
+    logger.info(f"[SpeechEmotion] File uploaded: {uploaded_file['name']}")
 
     logger.info(f"[SpeechEmotion] File ready, starting analysis")
 
@@ -136,7 +192,7 @@ async def analyze_speech_emotion(audio_file_path: str) -> dict:
     for attempt in range(3):
         try:
             response = await asyncio.to_thread(
-                model.generate_content, [uploaded_file, prompt]
+                model.generate_content, [_file_part(uploaded_file), prompt]
             )
             if response and response.text:
                 data = safe_parse_json(response.text)
@@ -146,7 +202,7 @@ async def analyze_speech_emotion(audio_file_path: str) -> dict:
 
                 # 업로드 파일 정리
                 try:
-                    await asyncio.to_thread(genai.delete_file, uploaded_file.name)
+                    await _delete_file(uploaded_file["name"])
                 except Exception:
                     pass
 
@@ -158,7 +214,7 @@ async def analyze_speech_emotion(audio_file_path: str) -> dict:
             else:
                 # 업로드 파일 정리
                 try:
-                    await asyncio.to_thread(genai.delete_file, uploaded_file.name)
+                    await _delete_file(uploaded_file["name"])
                 except Exception:
                     pass
                 raise
@@ -178,20 +234,8 @@ async def stt_with_emotion(audio_file_path: str) -> dict:
     """
     logger.info(f"[STT+Emotion] Starting combined analysis: {audio_file_path}")
 
-    # Gemini Files API에 음성 파일 업로드
-    uploaded_file = await asyncio.to_thread(
-        genai.upload_file, audio_file_path
-    )
-
-    # 파일 처리 완료 대기
-    while uploaded_file.state.name == "PROCESSING":
-        await asyncio.sleep(2)
-        uploaded_file = await asyncio.to_thread(
-            genai.get_file, uploaded_file.name
-        )
-
-    if uploaded_file.state.name == "FAILED":
-        raise ValueError(f"Audio file processing failed: {uploaded_file.state.name}")
+    # Gemini Files API에 음성 파일 업로드 (처리 완료까지 대기)
+    uploaded_file = await _upload_audio(audio_file_path)
 
     # STT + 감정 분석 동시 요청
     stt_prompt = """この音声ファイルから以下の2つのタスクを同時に実行してください。
@@ -259,7 +303,7 @@ async def stt_with_emotion(audio_file_path: str) -> dict:
     for attempt in range(3):
         try:
             response = await asyncio.to_thread(
-                model.generate_content, [uploaded_file, stt_prompt]
+                model.generate_content, [_file_part(uploaded_file), stt_prompt]
             )
             if response and response.text:
                 data = safe_parse_json(response.text)
@@ -284,7 +328,7 @@ async def stt_with_emotion(audio_file_path: str) -> dict:
 
                 # 업로드 파일 정리
                 try:
-                    await asyncio.to_thread(genai.delete_file, uploaded_file.name)
+                    await _delete_file(uploaded_file["name"])
                 except Exception:
                     pass
 
@@ -295,7 +339,7 @@ async def stt_with_emotion(audio_file_path: str) -> dict:
                 await asyncio.sleep(3 * (attempt + 1))
             else:
                 try:
-                    await asyncio.to_thread(genai.delete_file, uploaded_file.name)
+                    await _delete_file(uploaded_file["name"])
                 except Exception:
                     pass
                 raise
