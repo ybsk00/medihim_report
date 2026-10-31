@@ -73,7 +73,8 @@ async def _check_database() -> dict:
 async def _check_api_endpoints() -> dict:
     """주요 API 엔드포인트 응답 확인"""
     results = {}
-    base = "https://ippo-backend-788517765486.asia-northeast3.run.app"
+    # 컨테이너 자신을 점검 (Cloud Run·AWS Docker 모두 컨테이너 포트 8080)
+    base = "http://127.0.0.1:8080"
     endpoints = {
         "root": "/",
         "dashboard": "/api/dashboard/stats",
@@ -150,7 +151,7 @@ async def _check_frontend() -> dict:
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             start = time.time()
-            res = await client.get("https://ippeo-medhim.web.app/")
+            res = await client.get(f"{FRONTEND_URL}/")
             duration = int((time.time() - start) * 1000)
             return {
                 "status": "OK" if res.status_code < 400 else "ERROR",
@@ -402,12 +403,12 @@ def _build_health_email(checks: dict, now_kst: datetime) -> str:
         <h3 style="margin:0;font-size:16px;color:#1e293b;font-weight:700;">프론트엔드 웹서비스</h3>
         {_status_badge(fe.get('status', 'ERROR'))}
       </div>
-      <p style="margin:0 0 12px;font-size:12px;color:#94a3b8;">Firebase Hosting 기반 관리자페이지 + 소비자 리포트 웹 접속 상태</p>
+      <p style="margin:0 0 12px;font-size:12px;color:#94a3b8;">관리자페이지 웹 접속 상태</p>
       <div style="background:#f8fafc;border-radius:10px;padding:16px;border:1px solid #e2e8f0;">
         <table style="width:100%;border-collapse:collapse;">
           <tr>
             <td style="padding:4px 0;font-size:13px;color:#64748b;">서비스 URL</td>
-            <td style="padding:4px 0;font-size:13px;text-align:right;color:#3b82f6;">ippeo-medhim.web.app</td>
+            <td style="padding:4px 0;font-size:13px;text-align:right;color:#3b82f6;">{FRONTEND_URL.split("://")[-1]}</td>
           </tr>
           <tr>
             <td style="padding:4px 0;font-size:13px;color:#64748b;">응답 속도</td>
