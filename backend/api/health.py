@@ -18,7 +18,7 @@ from config import (
     GMAIL_ADDRESS, GMAIL_APP_PASSWORD,
     IPPEO_WEBHOOK_URL, IPPEO_WEBHOOK_URL_DEV,
     IPPEO_API_KEY, IPPEO_WEBHOOK_SECRET,
-    SUPABASE_URL, GEMINI_API_KEY, FRONTEND_URL,
+    SUPABASE_URL, GEMINI_API_KEY, ADMIN_FRONTEND_URL,
 )
 from services.supabase_client import get_supabase
 
@@ -151,7 +151,7 @@ async def _check_frontend() -> dict:
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             start = time.time()
-            res = await client.get(f"{FRONTEND_URL}/")
+            res = await client.get(f"{ADMIN_FRONTEND_URL}/")
             duration = int((time.time() - start) * 1000)
             return {
                 "status": "OK" if res.status_code < 400 else "ERROR",
@@ -408,7 +408,7 @@ def _build_health_email(checks: dict, now_kst: datetime) -> str:
         <table style="width:100%;border-collapse:collapse;">
           <tr>
             <td style="padding:4px 0;font-size:13px;color:#64748b;">서비스 URL</td>
-            <td style="padding:4px 0;font-size:13px;text-align:right;color:#3b82f6;">{FRONTEND_URL.split("://")[-1]}</td>
+            <td style="padding:4px 0;font-size:13px;text-align:right;color:#3b82f6;">{ADMIN_FRONTEND_URL.split("://")[-1]}</td>
           </tr>
           <tr>
             <td style="padding:4px 0;font-size:13px;color:#64748b;">응답 속도</td>

@@ -15,6 +15,9 @@ JWT_SECRET = os.getenv("JWT_SECRET")
 if not JWT_SECRET:
     raise RuntimeError("JWT_SECRET 환경변수가 설정되지 않았습니다. Cloud Run env 또는 .env에 설정하세요.")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+# 헬스체크가 점검할 관리자 화면 주소 (미설정 시 FRONTEND_URL).
+# FRONTEND_URL은 콜백·이메일 링크에 쓰이므로 IP 주소를 넣지 말 것 — 이뻐 CloudFront WAF(GenericRFI_BODY)가 차단함
+ADMIN_FRONTEND_URL = os.getenv("ADMIN_FRONTEND_URL") or FRONTEND_URL
 
 # PubMed / NCBI
 NCBI_API_KEY = os.getenv("NCBI_API_KEY", "")
